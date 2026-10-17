@@ -1,0 +1,10 @@
+{
+  "name": "couple-arcade",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n server,client -c magenta,cyan \"npm --prefix server run dev\" \"npm --prefix client run dev\""
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
+  }
+}
