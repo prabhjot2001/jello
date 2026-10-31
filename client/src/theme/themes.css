@@ -1,0 +1,174 @@
+:root[data-theme="calico"] {
+  --background:#FFF4E6; --foreground:#4A3566;
+  --card:#FFFFFF; --card-foreground:#4A3566;
+  --popover:#FFFFFF; --popover-foreground:#4A3566;
+  --primary:#FFB5C8; --primary-foreground:#4A3566;
+  --secondary:#D4F5E6; --secondary-foreground:#4A3566;
+  --muted:#FDE9D9; --muted-foreground:#7C6A94;
+  --accent:#FFF3C4; --accent-foreground:#4A3566;
+  --border:#4A3566; --input:#4A3566; --ring:#B9A3F0;
+}
+:root[data-theme="siamese"] {
+  --background:#EFE6FD; --foreground:#3F2D63;
+  --card:#FFFFFF; --card-foreground:#3F2D63;
+  --popover:#FFFFFF; --popover-foreground:#3F2D63;
+  --primary:#C9B3F5; --primary-foreground:#3F2D63;
+  --secondary:#FFD9E6; --secondary-foreground:#3F2D63;
+  --muted:#E2D6F8; --muted-foreground:#6F5C96;
+  --accent:#D6ECFF; --accent-foreground:#3F2D63;
+  --border:#3F2D63; --input:#3F2D63; --ring:#C9B3F5;
+}
+:root[data-theme="tuxedo"] {
+  --background:#E6F8EF; --foreground:#2F3B4A;
+  --card:#FFFFFF; --card-foreground:#2F3B4A;
+  --popover:#FFFFFF; --popover-foreground:#2F3B4A;
+  --primary:#9FE3C4; --primary-foreground:#2F3B4A;
+  --secondary:#FFF3C4; --secondary-foreground:#2F3B4A;
+  --muted:#D3F0E3; --muted-foreground:#5A6B7C;
+  --accent:#FFD9E6; --accent-foreground:#2F3B4A;
+  --border:#2F3B4A; --input:#2F3B4A; --ring:#9FE3C4;
+}
+:root[data-theme="midnight"] {
+  --background:#1E1B2E; --foreground:#F3E8FF;
+  --card:#2A2640; --card-foreground:#F3E8FF;
+  --popover:#2A2640; --popover-foreground:#F3E8FF;
+  --primary:#F2A7C8; --primary-foreground:#1E1B2E;
+  --secondary:#7C6BD6; --secondary-foreground:#F3E8FF;
+  --muted:#332E52; --muted-foreground:#B9A9D9;
+  --accent:#F9E79F; --accent-foreground:#1E1B2E;
+  --border:#F3E8FF; --input:#F3E8FF; --ring:#F2A7C8;
+}
+:root[data-theme="strawberry-milk"] {
+  --background:#FFF0F3; --foreground:#713B50;
+  --card:#FFFFFF; --card-foreground:#713B50;
+  --popover:#FFFFFF; --popover-foreground:#713B50;
+  --primary:#FFB7C5; --primary-foreground:#713B50;
+  --secondary:#FADADD; --secondary-foreground:#713B50;
+  --muted:#FCE4EA; --muted-foreground:#9B6B7D;
+  --accent:#FFE5A5; --accent-foreground:#713B50;
+  --border:#E9B6C5; --input:#E9B6C5; --ring:#F28CA8;
+}
+:root[data-theme="blueberry-kiss"] {
+  --background:#F4F0FF; --foreground:#493763;
+  --card:#FFFFFF; --card-foreground:#493763;
+  --popover:#FFFFFF; --popover-foreground:#493763;
+  --primary:#CDBBFF; --primary-foreground:#493763;
+  --secondary:#E4D9FF; --secondary-foreground:#493763;
+  --muted:#EAE3FA; --muted-foreground:#796993;
+  --accent:#D8F0FF; --accent-foreground:#493763;
+  --border:#D1C3E8; --input:#D1C3E8; --ring:#AC91F5;
+}
+:root[data-theme="peachy-puff"] {
+  --background:#FFF3E8; --foreground:#784B3B;
+  --card:#FFFFFF; --card-foreground:#784B3B;
+  --popover:#FFFFFF; --popover-foreground:#784B3B;
+  --primary:#FFCBA4; --primary-foreground:#784B3B;
+  --secondary:#FFE0CC; --secondary-foreground:#784B3B;
+  --muted:#FBE6D9; --muted-foreground:#987466;
+  --accent:#FFF0B8; --accent-foreground:#784B3B;
+  --border:#EAC7B1; --input:#EAC7B1; --ring:#F5AD86;
+}
+:root[data-theme="minty-mochi"] {
+  --background:#EDFFF5; --foreground:#315D4A;
+  --card:#FFFFFF; --card-foreground:#315D4A;
+  --popover:#FFFFFF; --popover-foreground:#315D4A;
+  --primary:#B7E8D0; --primary-foreground:#315D4A;
+  --secondary:#D8F5E6; --secondary-foreground:#315D4A;
+  --muted:#DFF5E9; --muted-foreground:#668A78;
+  --accent:#FFF0BC; --accent-foreground:#315D4A;
+  --border:#B9DCC9; --input:#B9DCC9; --ring:#82CBA8;
+}
+:root[data-theme="sakura-sugar"] {
+  --background:#FFF5F8; --foreground:#744257;
+  --card:#FFFFFF; --card-foreground:#744257;
+  --popover:#FFFFFF; --popover-foreground:#744257;
+  --primary:#F6C5D7; --primary-foreground:#744257;
+  --secondary:#FBE2EC; --secondary-foreground:#744257;
+  --muted:#F7E8EE; --muted-foreground:#A0788C;
+  --accent:#E9DCFF; --accent-foreground:#744257;
+  --border:#EAC7D6; --input:#EAC7D6; --ring:#E9A4C0;
+}
+:root[data-theme="grape-cupcake"] {
+  --background:#F8F0FF; --foreground:#563A70;
+  --card:#FFFFFF; --card-foreground:#563A70;
+  --popover:#FFFFFF; --popover-foreground:#563A70;
+  --primary:#D8BDF5; --primary-foreground:#563A70;
+  --secondary:#F0DDFE; --secondary-foreground:#563A70;
+  --muted:#EBE0F5; --muted-foreground:#89739D;
+  --accent:#FFDCEB; --accent-foreground:#563A70;
+  --border:#D8C5E7; --input:#D8C5E7; --ring:#BB92E9;
+}
+:root[data-theme="peachy-puff"] {
+  --background:#FFF3E8; --foreground:#784B3B;
+  --card:#FFFFFF; --card-foreground:#784B3B;
+  --popover:#FFFFFF; --popover-foreground:#784B3B;
+  --primary:#FFCBA4; --primary-foreground:#784B3B;
+  --secondary:#FFE0CC; --secondary-foreground:#784B3B;
+  --muted:#FBE6D9; --muted-foreground:#987466;
+  --accent:#FFF0B8; --accent-foreground:#784B3B;
+  --border:#EAC7B1; --input:#EAC7B1; --ring:#F5AD86;
+}
+:root[data-theme="honey-bunny"] {
+  --background:#FFFBEA; --foreground:#70552C;
+  --card:#FFFFFF; --card-foreground:#70552C;
+  --popover:#FFFFFF; --popover-foreground:#70552C;
+  --primary:#FFE69A; --primary-foreground:#70552C;
+  --secondary:#FFF1C7; --secondary-foreground:#70552C;
+  --muted:#F8EED0; --muted-foreground:#95805A;
+  --accent:#FFD9E5; --accent-foreground:#70552C;
+  --border:#E7D7A9; --input:#E7D7A9; --ring:#E9C75F;
+}
+:root[data-theme="cloudberry"] {
+  --background: #171821;
+  --foreground: #E4E4F0;
+
+  --card: #1E202C;
+  --card-foreground: #E4E4F0;
+
+  --popover: #232534;
+  --popover-foreground: #E4E4F0;
+
+  --primary: #C4A7E7;
+  --primary-foreground: #171821;
+
+  --secondary: #292B3B;
+  --secondary-foreground: #D5C6F5;
+
+  --muted: #252736;
+  --muted-foreground: #9295AD;
+
+  --accent: #F2A7C3;
+  --accent-foreground: #241824;
+
+  --border: #35374B;
+  --input: #303246;
+  --ring: #B99AE8;
+}
+
+body { font-family: "Nunito Variable", sans-serif; }
+h1, h2, h3, .font-display { font-family: "Fredoka Variable", sans-serif; }
+
+@keyframes float-around {
+  0%, 100% { transform: translateY(0) rotate(var(--r)); }
+  50%      { transform: translateY(-24px) rotate(calc(var(--r) + 8deg)); }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* Kart Dash: size the race view so it fits the screen without scrolling */
+.kart-wrap {
+  width: min(100%, calc((100vh - 230px) * 1.304));
+  width: min(100%, calc((100dvh - 230px) * 1.304));
+}
+@media (max-height: 520px) {
+  .kart-wrap {
+    width: min(100%, calc((100vh - 100px) * 1.304));
+    width: min(100%, calc((100dvh - 100px) * 1.304));
+  }
+  .kart-jump {
+    display: none;
+  }
+}

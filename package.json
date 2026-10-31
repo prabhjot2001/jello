@@ -1,6 +1,7 @@
 {
   "name": "couple-arcade",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "concurrently -n server,client -c magenta,cyan \"npm --prefix server run dev\" \"npm --prefix client run dev\""
   },
