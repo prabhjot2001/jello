@@ -151,7 +151,7 @@ function LobbyInner({ code }: { code: string }) {
               ],
               [
                 "coop",
-                "🤝 Couple Challenge",
+                "🤝 Partner Challenge",
                 "Solve 10 movies together in 90 seconds.",
               ],
             ] as const

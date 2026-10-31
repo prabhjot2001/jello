@@ -97,7 +97,7 @@ export default function MovieGame({ myId }: { room: RoomState; myId: string }) {
 function Header({ state, myId }: { state: MovieState; myId: string }) {
   const coop = state.mode === "coop";
   const label = coop
-    ? `Couple Challenge · ${state.coop?.solved ?? 0}/${state.coop?.target} solved`
+    ? `Partner Challenge · ${state.coop?.solved ?? 0}/${state.coop?.target} solved`
     : state.suddenDeath
       ? "Sudden death!"
       : `Round ${state.round}/${state.totalRounds}`;

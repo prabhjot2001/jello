@@ -156,7 +156,7 @@ export function MovieSettingsPanel({ room }: { room: RoomState }) {
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
           {coop
-            ? "Couple Challenge only uses Emoji, Scramble and Line rounds."
+            ? "Partner Challenge only uses Emoji, Scramble and Line rounds."
             : "Frame and Song rounds only appear for movies that have an image or audio clip."}
         </p>
       </div>
