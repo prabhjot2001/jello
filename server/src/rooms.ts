@@ -18,6 +18,7 @@ function makeCode(): string {
 
 export function createRoom(socketId: string, name: string): RoomState {
   const code = makeCode();
+
   const room: RoomState = {
     code,
     players: [{ id: socketId, name, ready: false }],
@@ -25,6 +26,7 @@ export function createRoom(socketId: string, name: string): RoomState {
     mode: "versus",
     settings: { ...DEFAULT_SETTINGS, types: [...DEFAULT_SETTINGS.types] },
     phase: "lobby",
+    limits: { min: 2, max: 2 },
   };
   rooms.set(code, room);
   socketToRoom.set(socketId, code);
@@ -37,10 +39,10 @@ export function joinRoom(
   name: string,
 ): { room: RoomState } | { error: string } {
   const room = rooms.get(code);
-  if (!room) return { error: "Room not found please check the code 🐾" };
+    if (!room) return { error: "Room not found. Check the code." };
   if (room.players.some((p) => p.id === socketId)) return { room };
-  if (room.players.length >= 2)
-    return { error: "Room is full (only 2 players)" };
+  if (room.players.length >= room.limits.max) return { error: "This room is full." };
+  
   room.players.push({ id: socketId, name, ready: false });
   socketToRoom.set(socketId, code);
   return { room };

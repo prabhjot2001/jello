@@ -172,3 +172,9 @@ body {
     display: none;
   }
 }
+
+/* Toot Raft: size the game so it fits the screen without scrolling */
+.toot-wrap {
+  width: min(100%, calc((100vh - 280px) * 1.6));
+  width: min(100%, calc((100dvh - 280px) * 1.6));
+}

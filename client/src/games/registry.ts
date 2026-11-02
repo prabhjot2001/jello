@@ -5,7 +5,8 @@ export type GameId =
   | "battleship"
   | "two-truths"
   | "bubble-battle"
-  | "kart-race";
+  | "kart-race"
+  | "toot-raft";
 
 export interface GameInfo {
   id: GameId;
@@ -34,6 +35,15 @@ export const GAMES: GameInfo[] = [
     status: "live",
     tagline:
       "Decode Bollywood movies from emojis, clues, scrambled letters and more. Race or team up.",
+  },
+  {
+    id: "toot-raft",
+    title: "Toot Raft",
+    emoji: "💨",
+    kind: "Action",
+    status: "live",
+    tagline:
+      "Steer one raft together with gas power. Aim, time and balance your toots to reach the finish.",
   },
   // {
   //   id: "know-me",

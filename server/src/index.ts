@@ -20,17 +20,23 @@ import {
 } from "./games/movieGuess.js";
 import { applySettings } from "./games/movieSettings.js";
 import { getKartGame, startKartGame, stopKartGame } from "./games/kartRace.js";
+import { getTootGame, startTootGame, stopTootGame } from "./games/tootRaft.js";
+import { limitsFor } from "./games/limits.js";
 
 const app = express();
 app.use(cors());
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
 // production: serve the built client from this same server
-const clientDist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../client/dist");
+const clientDist = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../../client/dist",
+);
 if (fs.existsSync(clientDist)) {
   app.use(express.static(clientDist));
   app.use((req, res, next) => {
-    if (req.method !== "GET" || req.path.startsWith("/socket.io")) return next();
+    if (req.method !== "GET" || req.path.startsWith("/socket.io"))
+      return next();
     res.sendFile(path.join(clientDist, "index.html"));
   });
 }
@@ -52,6 +58,7 @@ io.on("connection", (socket) => {
     if (room) {
       stopMovieGame(room.code);
       stopKartGame(room.code);
+      stopTootGame(room.code);
       socket.leave(room.code);
       broadcast(room);
     }
@@ -89,6 +96,7 @@ io.on("connection", (socket) => {
     const room = getRoom(socket.id);
     if (!room || room.phase !== "lobby") return;
     room.gameId = gameId;
+        room.limits = limitsFor(gameId);
     room.players.forEach((p) => (p.ready = false));
     broadcast(room);
   });
@@ -113,12 +121,14 @@ io.on("connection", (socket) => {
   socket.on("room:start", () => {
     const room = getRoom(socket.id);
     if (!room || !room.gameId) return;
-    if (room.players.length !== 2 || !room.players.every((p) => p.ready))
-      return;
+       const { min, max } = room.limits;
+    if (room.players.length < min || room.players.length > max || !room.players.every((p) => p.ready)) return;
     room.phase = "playing";
     broadcast(room);
     if (room.gameId === "movie-guess") startMovieGame(io, room);
     if (room.gameId === "kart-race") startKartGame(io, room);
+    if (room.gameId === "toot-raft") startTootGame(io, room);
+    
   });
 
   socket.on("room:back", () => {
@@ -126,6 +136,7 @@ io.on("connection", (socket) => {
     if (!room) return;
     stopMovieGame(room.code);
     stopKartGame(room.code);
+        stopTootGame(room.code);
     room.phase = "lobby";
     room.players.forEach((p) => (p.ready = false));
     broadcast(room);
@@ -178,7 +189,25 @@ io.on("connection", (socket) => {
     const peer = room && getKartGame(room.code)?.snapshot(socket.id, snap);
     if (room && peer) socket.to(room.code).volatile.emit("kart:peer", peer);
   });
+
+
+    /* ----- toot raft ----- */
+
+  const toot = () => {
+    const room = getRoom(socket.id);
+    return room ? getTootGame(room.code) : undefined;
+  };
+
+  socket.on("toot:request-state", () => {
+    const game = toot();
+    if (game) socket.emit("toot:state", game.publicState());
+  });
+  socket.on("toot:input", (input) => toot()?.setInput(socket.id, input));
+  socket.on("toot:next", () => toot()?.next());
+  socket.on("toot:again", () => toot()?.again());
 });
+
+
 
 const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => console.log(`server on :${PORT}`));

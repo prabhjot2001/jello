@@ -35,6 +35,11 @@ export const SFX = {
   shield: ["shield-1.mp3", "shield-2.mp3"],
   throwItem: ["throw-1.mp3", "throw-2.mp3"],
   trapped: ["trapped-1.mp3", "trapped-2.mp3"],
+
+    // Toot Raft
+  fart:       ["fart-1.mp3", "fart-2.mp3", "fart-3.mp3", "fart-4.mp3"],
+  splat:      ["splat-1.mp3", "splat-2.mp3"],
+  checkpoint: ["checkpoint-1.mp3"],
 } as const;
 
 export type SfxName = keyof typeof SFX;
@@ -48,6 +53,7 @@ const VOLUME: Partial<Record<SfxName, number>> = {
   coin: 0.35,
   boost: 0.7,
   tick: 0.5,
+  fart: 0.8,
 };
 
 /* ------------------------------------------------------------------
@@ -57,6 +63,7 @@ const VOLUME: Partial<Record<SfxName, number>> = {
 export const GAME_MUSIC = {
   kart: ["kart-1.mp3", "kart-2.mp3", "kart-3.mp3"],
   movie: [] as string[], // optional, leave empty to keep the theme music in Movie Guess
+  toot: [] as string[],
 } as const;
 
 export type GameMusicKey = keyof typeof GAME_MUSIC;

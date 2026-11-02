@@ -12,6 +12,7 @@ import { GAMES } from "@/games/registry";
 import MovieGame from "@/games/movie/MovieGame";
 import { MovieSettingsPanel } from "@/games/movie/MovieSettingsPanel";
 import KartRace from "@/games/kart/KartRace";
+import TootRaft from "@/games/toot/TootRaft";
 
 const stickerCard =
   "rounded-3xl border-2 border-border bg-card p-5 shadow-[4px_4px_0_0_var(--border)]";
@@ -72,18 +73,20 @@ function LobbyInner({ code }: { code: string }) {
   }
 
   const me = room.players.find((p) => p.id === myId);
-  const other = room.players.find((p) => p.id !== myId);
+  // const other = room.players.find((p) => p.id !== myId);
   const game = GAMES.find((g) => g.id === room.gameId);
   const canStart =
-    room.players.length === 2 &&
+    room.players.length >= room.limits.min &&
+    room.players.length <= room.limits.max &&
     room.players.every((p) => p.ready) &&
     !!room.gameId;
-
+    
   // game start ho gaya (abhi placeholder)
   if (room.phase === "playing") {
     if (room.gameId === "movie-guess")
       return <MovieGame room={room} myId={myId} />;
     if (room.gameId === "kart-race") return <KartRace myId={myId} />;
+    if (room.gameId === "toot-raft") return <TootRaft myId={myId} />;
     return (
       <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-4 px-4 text-center">
         <div className="text-6xl">{game?.emoji}</div>
@@ -125,15 +128,13 @@ function LobbyInner({ code }: { code: string }) {
       </section>
 
       {/* players */}
-      <section className="grid gap-4 sm:grid-cols-2">
-        <PlayerCard name={me?.name ?? ""} ready={!!me?.ready} label="You" />
-        {other ? (
-          <PlayerCard name={other.name} ready={other.ready} label="Partner" />
-        ) : (
-          <Card
-            className={`${stickerCard} flex items-center justify-center border-dashed text-muted-foreground`}
-          >
-            Waiting for your friends … 🐾
+           <section className="grid gap-4 sm:grid-cols-2">
+        {room.players.map((p) => (
+          <PlayerCard key={p.id} name={p.name} ready={p.ready} label={p.id === myId ? "You" : "Player"} />
+        ))}
+        {room.players.length < room.limits.max && (
+          <Card className={`${stickerCard} flex items-center justify-center border-dashed text-muted-foreground`}>
+            Waiting for players… share the room code 🐾
           </Card>
         )}
       </section>
