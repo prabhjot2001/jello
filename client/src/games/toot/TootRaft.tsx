@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { socket } from "@/socket";
 import { syncClock } from "@/lib/clock";
+import { recordStars, starsFor } from "@/lib/tootProgress";
 import { playSfx, startGameMusic, stopGameMusic } from "@/theme/sound";
-import type { TootCounts, TootPlayer, TootState } from "@/types";
+import type { TootCounts, TootLevel, TootPlayer, TootState } from "@/types";
 import { TootCanvas } from "./TootCanvas";
+import { TootGarage } from "./TootGarage";
 
 const card = "rounded-3xl border-2 border-border bg-card p-6 shadow-[4px_4px_0_0_var(--border)]";
 
@@ -39,11 +41,12 @@ export default function TootRaft({ myId }: { myId: string }) {
   if (!state) {
     return <div className="flex min-h-[60vh] items-center justify-center font-display text-xl">Loading… 🐱</div>;
   }
+  if (state.phase === "garage" || !state.level) return <TootGarage state={state} myId={myId} />;
 
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-3 px-3 py-4">
-      <TootCanvas state={state} myId={myId} />
-      {state.phase === "clear" && <ClearOverlay state={state} myId={myId} />}
+      <TootCanvas state={state} level={state.level} myId={myId} />
+      {state.phase === "clear" && <ClearOverlay state={state} level={state.level} myId={myId} />}
       {state.phase === "final" && <FinalOverlay state={state} myId={myId} />}
     </main>
   );
@@ -64,12 +67,12 @@ function Stats({ players, counts, myId }: { players: TootPlayer[]; counts: TootC
                 {p.id === myId ? `${p.name} (you)` : p.name}
               </span>
               <span className="text-sm">
-                {blames > 0 && blames === worst ? "🫵 Raft tipper " : ""}
+                {blames > 0 && blames === worst ? "🫵 Tipper " : ""}
                 {farts > 0 && farts === gassiest ? "💨 Gassiest" : ""}
               </span>
             </div>
             <div className="text-xs text-muted-foreground">
-              Tipped the raft {blames}× · Farted {farts}×
+              Caused {blames} wipeout{blames === 1 ? "" : "s"} · Farted {farts}×
             </div>
           </div>
         );
@@ -78,26 +81,32 @@ function Stats({ players, counts, myId }: { players: TootPlayer[]; counts: TootC
   );
 }
 
-function Overlay({ children }: { children: React.ReactNode }) {
+function Overlay({ children }: { children: ReactNode }) {
   return (
     <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 px-4">
-      <Card className={`${card} w-full max-w-sm text-center`}>{children}</Card>
+      <Card className={`${card} max-h-[90vh] w-full max-w-sm overflow-y-auto text-center`}>{children}</Card>
     </div>
   );
 }
 
-function ClearOverlay({ state, myId }: { state: TootState; myId: string }) {
+function ClearOverlay({ state, level, myId }: { state: TootState; level: TootLevel; myId: string }) {
+  const stars = starsFor(state.stats.deaths);
+
   useEffect(() => {
+    recordStars(level.mapId, state.levelIndex, stars);
     playSfx("win");
     confetti({ particleCount: 140, spread: 80, origin: { y: 0.6 } });
+    // run once when the level is cleared
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <Overlay>
       <div className="text-6xl">🏁</div>
       <h2 className="mt-2 font-display text-3xl font-bold">Level cleared!</h2>
+      <p className="text-3xl">{"⭐".repeat(stars)}</p>
       <p className="mb-4 text-muted-foreground">
-        {state.level.name} · {(state.stats.timeMs / 1000).toFixed(1)}s · 💀 {state.stats.deaths}
+        {level.name} · {(state.stats.timeMs / 1000).toFixed(1)}s · 💀 {state.stats.deaths}
       </p>
       <div className="mb-4">
         <Stats players={state.players} counts={state.stats} myId={myId} />
@@ -128,7 +137,7 @@ function FinalOverlay({ state, myId }: { state: TootState; myId: string }) {
       </div>
       <div className="flex flex-col gap-2">
         <Button size="lg" onClick={() => socket.emit("toot:again")}>
-          Play again
+          Back to the garage
         </Button>
         <Button variant="outline" onClick={() => socket.emit("room:back")}>
           Back to lobby

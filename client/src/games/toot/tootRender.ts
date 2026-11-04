@@ -1,14 +1,12 @@
-import type { TootLevel, TootPlayer, TootPlayerSnap } from "@/types";
+import type { TootHazard, TootLevel, TootPlayer, TootPlayerSnap, TootVehicleInfo } from "@/types";
 import { findAvatar, getAvatarImage } from "../kart/avatars";
 import type { Theme } from "../kart/engine";
 
 export const VIEW_W = 800;
 export const VIEW_H = 500;
-const RAFT_W = 220;
-const RAFT_H = 26;
 
-/** Where each player sits on the raft. Must match the server. */
-export const slotX = (i: number, n: number) => (n === 1 ? 0 : -RAFT_W * 0.34 + RAFT_W * 0.68 * (i / (n - 1)));
+/** Where each player sits on the vehicle. Must match the server. */
+export const slotX = (i: number, n: number, w: number) => (n === 1 ? 0 : -w * 0.34 + w * 0.68 * (i / (n - 1)));
 
 export interface Pose {
   x: number;
@@ -43,7 +41,20 @@ function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: n
   ctx.closePath();
 }
 
-function drawAvatar(ctx: CanvasRenderingContext2D, id: string, x: number, y: number, size: number) {
+function emoji(ctx: CanvasRenderingContext2D, ch: string, x: number, y: number, size: number, flip = false, alpha = 1) {
+  ctx.save();
+  ctx.translate(x, y);
+  if (flip) ctx.scale(-1, 1);
+  ctx.globalAlpha = alpha;
+  ctx.font = `${Math.round(size)}px sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#000";
+  ctx.fillText(ch, 0, 0);
+  ctx.restore();
+}
+
+export function drawAvatar(ctx: CanvasRenderingContext2D, id: string, x: number, y: number, size: number) {
   const av = findAvatar(id);
   const img = getAvatarImage(av);
   if (img) {
@@ -52,118 +63,119 @@ function drawAvatar(ctx: CanvasRenderingContext2D, id: string, x: number, y: num
     const h = ar >= 1 ? size / ar : size;
     ctx.drawImage(img, x - w / 2, y - h / 2, w, h);
   } else {
-    ctx.font = `${Math.round(size * 0.8)}px sans-serif`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = "#000";
-    ctx.fillText(av.fallback, x, y + 2);
+    emoji(ctx, av.fallback, x, y + 2, size * 0.8);
   }
 }
 
-export function drawTootScene(
-  ctx: CanvasRenderingContext2D,
-  o: {
-    level: TootLevel;
-    players: TootPlayer[];
-    pose: Pose;
-    cam: { x: number; y: number };
-    particles: Particle[];
-    mySlot: number;
-    aimOwn: number;
-    th: Theme;
-    time: number;
-  }
-) {
-  const { level, players, pose, cam, particles, mySlot, aimOwn, th, time } = o;
-  const n = players.length;
-  ctx.clearRect(0, 0, VIEW_W, VIEW_H);
-
-  // sky + parallax
-  const sky = ctx.createLinearGradient(0, 0, 0, VIEW_H);
-  sky.addColorStop(0, th.skyTop);
-  sky.addColorStop(1, th.skyBottom);
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-  ctx.font = "40px sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.globalAlpha = 0.6;
-  const span = VIEW_W + 160;
-  for (let i = 0; i < 6; i++) {
-    const cx = ((((i * 330 - cam.x * 0.2) % span) + span) % span) - 80;
-    ctx.fillText("☁️", cx, 60 + (i % 3) * 50 - cam.y * 0.05);
-  }
-  ctx.globalAlpha = 1;
-
-  ctx.save();
-  ctx.translate(-cam.x, -cam.y);
-  const inView = (x: number, y: number, w: number, h: number) =>
-    x + w > cam.x - 80 && x < cam.x + VIEW_W + 80 && y + h > cam.y - 80 && y < cam.y + VIEW_H + 80;
-
-  // rock
-  ctx.fillStyle = "#D8CBF0";
-  ctx.strokeStyle = th.ink;
+/** The vehicle hull, centered on (0, 0). A row of its emoji decorates the hull. */
+export function drawVehicle(ctx: CanvasRenderingContext2D, v: TootVehicleInfo, ink: string, time: number) {
+  const { w, h } = v;
   ctx.lineWidth = 3;
-  for (const s of level.solids) {
-    if (!inView(s.x, s.y, s.w, s.h)) continue;
-    rr(ctx, s.x, s.y, s.w, s.h, 10);
-    ctx.fill();
-    ctx.stroke();
-  }
+  ctx.strokeStyle = ink;
 
-  // checkpoints and finish
-  level.checkpoints.forEach((c, i) => {
-    if (!inView(c.x - 40, c.y - 120, 80, 140)) return;
-    ctx.globalAlpha = pose.cp >= i ? 1 : 0.45;
-    ctx.fillStyle = th.ink;
-    ctx.fillRect(c.x - 2, c.y - 110, 4, 110);
-    ctx.font = "44px sans-serif";
-    ctx.textAlign = "left";
-    ctx.fillStyle = "#000";
-    ctx.fillText("🚩", c.x, c.y - 100);
-    ctx.globalAlpha = 1;
-  });
-  if (inView(level.finishX, 0, 60, level.height)) {
-    for (let r = 0; r < Math.ceil(level.height / 25); r++) {
-      for (let c = 0; c < 2; c++) {
-        ctx.fillStyle = (r + c) % 2 ? "#2d2540" : "#ffffff";
-        ctx.fillRect(level.finishX + c * 25, r * 25, 25, 25);
-      }
+  if (v.wheels) {
+    for (const wx of [-w * 0.32, w * 0.32]) {
+      ctx.fillStyle = "#3b2f4f";
+      ctx.beginPath();
+      ctx.arc(wx, h / 2, h * 0.55, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(wx, h / 2, h * 0.2, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
+  if (v.propeller) {
+    ctx.save();
+    ctx.translate(w / 2 + 6, 0);
+    ctx.fillStyle = "#555";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 4, 6 + 24 * Math.abs(Math.cos(time / 40)), 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
 
-  // hazards
-  for (const h of level.hazards) {
-    const s = Math.sin((2 * Math.PI * pose.gt) / h.period + h.phase);
-    const hx = h.x + h.ax * s;
-    const hy = h.y + h.ay * s;
-    if (!inView(hx, hy, h.w, h.h)) continue;
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = th.ink;
-    if (h.kind === "spikes") {
-      const up = h.y + h.h / 2 > level.height / 2;
+  ctx.fillStyle = v.color;
+  rr(ctx, -w / 2, -h / 2, w, h, Math.min(10, h / 2));
+  ctx.fill();
+  ctx.stroke();
+
+  const size = h * 1.5;
+  const count = Math.max(2, Math.round(w / (size * 1.1)));
+  for (let i = 0; i < count; i++) {
+    emoji(ctx, v.emoji, -w / 2 + (w * (i + 0.5)) / count, 1, size);
+  }
+}
+
+/** Where a hazard is at game time gt. `dir` is the sign of its horizontal movement. */
+function hazardPos(h: TootHazard, gt: number) {
+  const phase = (2 * Math.PI * gt) / h.period + h.phase;
+  const s = Math.sin(phase);
+  if (h.swing) {
+    const a = h.swing.amp * s;
+    return { x: h.swing.px + h.swing.len * Math.sin(a), y: h.swing.py + h.swing.len * Math.cos(a), a, dir: Math.cos(phase) };
+  }
+  return { x: h.x + h.w / 2 + h.ax * s, y: h.y + h.h / 2 + h.ay * s, a: 0, dir: Math.cos(phase) * (h.ax || 1) };
+}
+
+function drawHazard(ctx: CanvasRenderingContext2D, h: TootHazard, gt: number, time: number, th: Theme, height: number) {
+  const p = hazardPos(h, gt);
+  const r = h.w / 2;
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = th.ink;
+
+  switch (h.skin) {
+    case "spikes":
+    case "thorns": {
+      const up = h.y + h.h / 2 > height / 2;
       const count = Math.max(1, Math.round(h.w / 30));
       const tw = h.w / count;
-      ctx.fillStyle = "#FF7B9C";
+      ctx.fillStyle = h.skin === "spikes" ? "#C9D1DC" : "#5CB85C";
       for (let i = 0; i < count; i++) {
         ctx.beginPath();
         if (up) {
-          ctx.moveTo(hx + i * tw, hy + h.h);
-          ctx.lineTo(hx + i * tw + tw / 2, hy);
-          ctx.lineTo(hx + (i + 1) * tw, hy + h.h);
+          ctx.moveTo(h.x + i * tw, h.y + h.h);
+          ctx.lineTo(h.x + i * tw + tw / 2, h.y);
+          ctx.lineTo(h.x + (i + 1) * tw, h.y + h.h);
         } else {
-          ctx.moveTo(hx + i * tw, hy);
-          ctx.lineTo(hx + i * tw + tw / 2, hy + h.h);
-          ctx.lineTo(hx + (i + 1) * tw, hy);
+          ctx.moveTo(h.x + i * tw, h.y);
+          ctx.lineTo(h.x + i * tw + tw / 2, h.y + h.h);
+          ctx.lineTo(h.x + (i + 1) * tw, h.y);
         }
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
       }
-    } else {
-      const r = h.w / 2;
+      break;
+    }
+    case "fire": {
+      const count = Math.max(1, Math.round(h.w / 40));
+      for (let i = 0; i < count; i++) {
+        emoji(ctx, "🔥", h.x + ((i + 0.5) * h.w) / count, h.y + h.h / 2 + Math.sin(time / 120 + i) * 2, 52);
+      }
+      break;
+    }
+    case "poop": {
+      const count = Math.max(1, Math.round(h.w / 46));
+      for (let i = 0; i < count; i++) {
+        const px = h.x + ((i + 0.5) * h.w) / count;
+        const py = h.y + h.h / 2 + 2;
+        emoji(ctx, "💩", px, py, 54);
+        for (let k = 0; k < 2; k++) {
+          emoji(
+            ctx, "🪰",
+            px + Math.cos(time / 250 + i * 1.7 + k * 3.1) * 26,
+            py - 34 + Math.sin(time / 170 + i + k * 2) * 10,
+            22
+          );
+        }
+      }
+      break;
+    }
+    case "saw": {
       ctx.save();
-      ctx.translate(hx + r, hy + r);
+      ctx.translate(p.x, p.y);
       ctx.rotate(time / 180);
       ctx.fillStyle = "#FF9AA2";
       for (let k = 0; k < 10; k++) {
@@ -185,7 +197,168 @@ export function drawTootScene(
       ctx.arc(0, 0, r * 0.3, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
+      break;
     }
+    case "roach":
+      emoji(ctx, "🪳", p.x, p.y, r * 2.2, p.dir > 0);
+      break;
+    case "dog":
+      emoji(ctx, "🐕", p.x, p.y, r * 2.2, p.dir > 0);
+      break;
+    case "dino":
+      emoji(ctx, "🦖", p.x, p.y, r * 1.9, p.dir > 0);
+      break;
+    case "bat":
+      emoji(ctx, "🦇", p.x, p.y + Math.sin(time / 90) * 3, r * 2.2, p.dir > 0);
+      break;
+    case "ghost":
+      emoji(ctx, "👻", p.x, p.y, r * 2, false, 0.7 + 0.25 * Math.sin(time / 300));
+      break;
+    case "spider": {
+      ctx.strokeStyle = "rgba(255,255,255,0.8)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(p.x, h.hangFrom ?? 0);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+      emoji(ctx, "🕷️", p.x, p.y, r * 2.1);
+      break;
+    }
+    case "chainsaw": {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      if (p.dir > 0) ctx.scale(-1, 1);
+      ctx.fillStyle = "#E04B4B";
+      rr(ctx, -34, -16, 40, 32, 8);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#B8C0CC";
+      rr(ctx, -62, -9, 34, 18, 6);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#333";
+      for (let k = 0; k < 6; k++) {
+        const tx = -60 + k * 5.5 + ((time / 40) % 5.5);
+        ctx.beginPath();
+        ctx.moveTo(tx, -9);
+        ctx.lineTo(tx + 3, -14);
+        ctx.lineTo(tx + 6, -9);
+        ctx.fill();
+      }
+      ctx.restore();
+      break;
+    }
+    case "hammer":
+    case "blade": {
+      const sw = h.swing!;
+      ctx.strokeStyle = th.ink;
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(sw.px, sw.py);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+      if (h.skin === "hammer") {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.a);
+        emoji(ctx, "🔨", 0, 0, r * 2.3);
+        ctx.restore();
+      } else {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.a);
+        ctx.fillStyle = "#DDE5EE";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, -r * 0.2, r, 0, Math.PI);
+        ctx.arc(0, -r * 0.2, r * 0.55, Math.PI, 0, true);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+      break;
+    }
+  }
+}
+
+export function drawTootScene(
+  ctx: CanvasRenderingContext2D,
+  o: {
+    level: TootLevel;
+    vehicle: TootVehicleInfo;
+    players: TootPlayer[];
+    pose: Pose;
+    cam: { x: number; y: number };
+    particles: Particle[];
+    mySlot: number;
+    aimOwn: number;
+    th: Theme;
+    time: number;
+  }
+) {
+  const { level, vehicle, players, pose, cam, particles, mySlot, aimOwn, th, time } = o;
+  const n = players.length;
+  const theme = level.theme;
+  ctx.clearRect(0, 0, VIEW_W, VIEW_H);
+
+  // map background: gradient and two parallax layers of emoji
+  const sky = ctx.createLinearGradient(0, 0, 0, VIEW_H);
+  sky.addColorStop(0, theme.skyTop);
+  sky.addColorStop(1, theme.skyBottom);
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+  const layer = (items: string[], par: number, size: number, alpha: number, yBase: number, spacing: number) => {
+    const span = spacing * 9;
+    for (let i = 0; i < 9; i++) {
+      const x = ((((i * spacing - cam.x * par) % span) + span) % span) - spacing;
+      const y = yBase + ((i * 53) % 150) - cam.y * par * 0.3;
+      emoji(ctx, items[i % items.length], x, y, size, false, alpha);
+    }
+  };
+  layer(theme.far, 0.15, 64, 0.35, 60, 280);
+  layer(theme.near, 0.35, 48, 0.5, 260, 240);
+
+  ctx.save();
+  ctx.translate(-cam.x, -cam.y);
+  const inView = (x: number, y: number, w: number, h: number) =>
+    x + w > cam.x - 100 && x < cam.x + VIEW_W + 100 && y + h > cam.y - 100 && y < cam.y + VIEW_H + 100;
+
+  // rock
+  ctx.fillStyle = theme.rock;
+  ctx.strokeStyle = theme.rockEdge;
+  ctx.lineWidth = 3;
+  for (const s of level.solids) {
+    if (!inView(s.x, s.y, s.w, s.h)) continue;
+    rr(ctx, s.x, s.y, s.w, s.h, 12);
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  // checkpoints and finish
+  level.checkpoints.forEach((c, i) => {
+    if (!inView(c.x - 40, c.y - 120, 80, 140)) return;
+    ctx.globalAlpha = pose.cp >= i ? 1 : 0.45;
+    ctx.fillStyle = th.ink;
+    ctx.fillRect(c.x - 2, c.y - 110, 4, 110);
+    emoji(ctx, "🚩", c.x + 20, c.y - 95, 44);
+    ctx.globalAlpha = 1;
+  });
+  if (inView(level.finishX, 0, 60, level.height)) {
+    for (let r = 0; r < Math.ceil(level.height / 25); r++) {
+      for (let c = 0; c < 2; c++) {
+        ctx.fillStyle = (r + c) % 2 ? "#2d2540" : "#ffffff";
+        ctx.fillRect(level.finishX + c * 25, r * 25, 25, 25);
+      }
+    }
+  }
+
+  // hazards
+  for (const h of level.hazards) {
+    const p = hazardPos(h, pose.gt);
+    if (!inView(p.x - 400, p.y - 400, 800, 800)) continue;
+    drawHazard(ctx, h, pose.gt, time, th, level.height);
   }
 
   // gas clouds
@@ -199,36 +372,22 @@ export function drawTootScene(
   }
   ctx.globalAlpha = 1;
 
-  // the raft with its cats
+  // the vehicle with its cats
   if (!pose.dead) {
     ctx.save();
     ctx.translate(pose.x, pose.y);
     ctx.rotate(pose.a);
-    ctx.fillStyle = "#E8C48F";
-    ctx.strokeStyle = th.ink;
-    ctx.lineWidth = 3;
-    rr(ctx, -RAFT_W / 2, -RAFT_H / 2, RAFT_W, RAFT_H, 8);
-    ctx.fill();
-    ctx.stroke();
-    ctx.strokeStyle = "rgba(120,80,40,0.45)";
-    ctx.lineWidth = 2;
-    for (let k = 1; k < 6; k++) {
-      const px = -RAFT_W / 2 + (k * RAFT_W) / 6;
-      ctx.beginPath();
-      ctx.moveTo(px, -RAFT_H / 2 + 3);
-      ctx.lineTo(px, RAFT_H / 2 - 3);
-      ctx.stroke();
-    }
+    drawVehicle(ctx, vehicle, th.ink, time);
 
     players.forEach((p, i) => {
-      const sx = slotX(i, n);
+      const sx = slotX(i, n, vehicle.w);
       const snap = pose.ps[i];
       const aim = i === mySlot ? aimOwn : snap?.aim ?? 0;
       const power = snap?.p ?? 0;
 
       // nozzle cone points the way the gas shoots out
       ctx.save();
-      ctx.translate(sx, RAFT_H / 2);
+      ctx.translate(sx, vehicle.h / 2);
       ctx.rotate(-aim);
       ctx.fillStyle = p.color;
       ctx.strokeStyle = th.ink;
@@ -246,11 +405,11 @@ export function drawTootScene(
         ctx.strokeStyle = p.color;
         ctx.lineWidth = 4;
         ctx.beginPath();
-        ctx.ellipse(sx, -RAFT_H / 2, 30, 8, 0, 0, Math.PI * 2);
+        ctx.ellipse(sx, -vehicle.h / 2, 30, 8, 0, 0, Math.PI * 2);
         ctx.stroke();
       }
       const shake = power > 0.3 ? (Math.random() - 0.5) * 3 : 0;
-      drawAvatar(ctx, p.avatar, sx + shake, -RAFT_H / 2 - 24 + Math.sin(time / 200 + i) * 1.5, 52);
+      drawAvatar(ctx, p.avatar, sx + shake, -vehicle.h / 2 - 24 + Math.sin(time / 200 + i) * 1.5, 52);
     });
     ctx.restore();
 
@@ -261,8 +420,8 @@ export function drawTootScene(
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     players.forEach((p, i) => {
-      const lx = slotX(i, n);
-      const ly = -RAFT_H / 2 - 62;
+      const lx = slotX(i, n, vehicle.w);
+      const ly = -vehicle.h / 2 - 62;
       const wx = pose.x + lx * cos - ly * sin;
       const wy = pose.y + lx * sin + ly * cos;
       const w = ctx.measureText(p.name).width + 14;
@@ -276,10 +435,7 @@ export function drawTootScene(
       ctx.fillText(p.name, wx, wy + 1);
     });
   } else {
-    ctx.font = "90px sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("💥", pose.x, pose.y);
+    emoji(ctx, "💥", pose.x, pose.y, 90);
   }
   ctx.restore();
 }

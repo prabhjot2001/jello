@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { socket } from "@/socket";
 import { maybeMeme, playSfx } from "@/theme/sound";
 import { serverNow, useServerTime } from "@/lib/clock";
-import type { TootEvent, TootSnapshot, TootState } from "@/types";
+import type { TootEvent, TootLevel, TootSnapshot, TootState } from "@/types";
 import { readTheme } from "../kart/engine";
 import { drawTootScene, slotX, VIEW_H, VIEW_W, type Particle, type Pose } from "./tootRender";
 
@@ -12,6 +12,8 @@ const AIM_MAX = 1.0; // keep in sync with the server
 
 const btn =
   "flex h-20 items-center justify-center rounded-3xl border-2 border-border font-display font-bold shadow-[4px_4px_0_0_var(--border)] active:translate-y-1 sm:h-16";
+const small =
+  "flex h-12 items-center justify-center rounded-2xl border-2 border-border bg-card px-2 text-center text-sm font-display font-bold shadow-[3px_3px_0_0_var(--border)] active:translate-y-0.5";
 
 function countdownLabel(remainingMs: number) {
   if (remainingMs > 3000) return "Get ready…";
@@ -22,15 +24,19 @@ function countdownLabel(remainingMs: number) {
   return "";
 }
 
-export function TootCanvas({ state, myId }: { state: TootState; myId: string }) {
+export function TootCanvas({ state, level, myId }: { state: TootState; level: TootLevel; myId: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef(state);
   stateRef.current = state;
   const input = useRef({ left: false, right: false, fart: false });
   const [banner, setBanner] = useState("");
   const [gas, setGas] = useState<number[]>([]);
+  const [stuck, setStuck] = useState(false);
 
   const mySlot = state.players.findIndex((p) => p.id === myId);
+
+  const straighten = () => socket.emit("toot:right");
+  const backToCheckpoint = () => socket.emit("toot:reset");
 
   useEffect(() => {
     const canvas = canvasRef.current!;
@@ -43,7 +49,7 @@ export function TootCanvas({ state, myId }: { state: TootState; myId: string }) 
     const buf: TootSnapshot[] = [];
     const particles: Particle[] = [];
     const cam = { x: 0, y: 0, ready: false };
-    let level = -1;
+    let levelIdx = -1;
     let aim = 0;
     let sent = { aim: 0, fart: false, at: 0 };
     let last = performance.now();
@@ -53,10 +59,10 @@ export function TootCanvas({ state, myId }: { state: TootState; myId: string }) 
     let raf = 0;
     let bannerTimer: ReturnType<typeof setTimeout> | undefined;
 
-    const say = (text: string) => {
+    const say = (text: string, ms = 2200) => {
       setBanner(text);
       clearTimeout(bannerTimer);
-      bannerTimer = setTimeout(() => setBanner(""), 2200);
+      bannerTimer = setTimeout(() => setBanner(""), ms);
     };
 
     const onSnap = (s: TootSnapshot) => {
@@ -64,21 +70,45 @@ export function TootCanvas({ state, myId }: { state: TootState; myId: string }) 
       if (buf.length > 40) buf.shift();
     };
     const onEvent = (e: TootEvent) => {
-      if (e.kind === "fail") {
-        playSfx("splat");
-        maybeMeme(0.5);
-        say(
-          e.reason === "capsize"
-            ? `💨 ${e.name} tipped the raft!`
-            : e.reason === "hazard"
-              ? `☠️ ${e.name} steered into danger!`
-              : `🫧 ${e.name} dropped the raft!`
-        );
-      } else if (e.kind === "checkpoint") {
-        playSfx("checkpoint");
-        say("🚩 Checkpoint reached!");
-      } else {
-        playSfx("roundStart");
+      const vehicleName = stateRef.current.vehicle.name;
+      switch (e.kind) {
+        case "fail":
+          setStuck(false);
+          playSfx("splat");
+          maybeMeme(0.5);
+          say(
+            e.reason === "capsize"
+              ? `💨 ${e.name} tipped the ${vehicleName}!`
+              : e.reason === "hazard"
+                ? `☠️ ${e.name} steered into danger!`
+                : `🫧 ${e.name} dropped the ${vehicleName}!`
+          );
+          break;
+        case "checkpoint":
+          setStuck(false);
+          playSfx("checkpoint");
+          say("🚩 Checkpoint reached!");
+          break;
+        case "stuck":
+          setStuck(true);
+          say("🪤 Stuck? Try Straighten or Back to checkpoint.", 4500);
+          break;
+        case "right":
+          setStuck(false);
+          playSfx("roundStart");
+          say(`↺ ${e.name} straightened the ${vehicleName}`);
+          break;
+        case "vote":
+          say(`⟲ ${e.name} wants to go back to the checkpoint (${e.votes}/${e.needed})`, 3000);
+          break;
+        case "reset":
+          setStuck(false);
+          playSfx("roundStart");
+          say(e.name === "Auto reset" ? "⟲ Stuck for too long: back to the checkpoint" : "⟲ Back to the checkpoint");
+          break;
+        default:
+          setStuck(false);
+          playSfx("roundStart");
       }
     };
     socket.on("toot:snap", onSnap);
@@ -90,6 +120,10 @@ export function TootCanvas({ state, myId }: { state: TootState; myId: string }) 
       else if (c === "ArrowRight" || c === "KeyD") input.current.right = down;
       else if (c === "Space" || c === "ArrowUp" || c === "KeyW" || c === "ArrowDown" || c === "KeyS") {
         input.current.fart = down;
+      } else if (c === "KeyR") {
+        if (down && !e.repeat) socket.emit("toot:right");
+      } else if (c === "KeyC") {
+        if (down && !e.repeat) socket.emit("toot:reset");
       } else return;
       e.preventDefault();
     };
@@ -107,14 +141,16 @@ export function TootCanvas({ state, myId }: { state: TootState; myId: string }) 
     const tick = (ts: number) => {
       raf = requestAnimationFrame(tick);
       const st = stateRef.current;
+      const lv = st.level;
+      if (!lv) return;
       const dt = Math.min(0.05, (ts - last) / 1000);
       last = ts;
       const now = serverNow();
       const n = st.players.length;
       const slot = st.players.findIndex((p) => p.id === myId);
 
-      if (st.levelIndex !== level) {
-        level = st.levelIndex;
+      if (st.levelIndex !== levelIdx) {
+        levelIdx = st.levelIndex;
         buf.length = 0;
         particles.length = 0;
         cam.ready = false;
@@ -135,9 +171,9 @@ export function TootCanvas({ state, myId }: { state: TootState; myId: string }) 
         }
       }
 
-      // the raft is shown ~110ms in the past, interpolated between two snapshots
+      // the vehicle is shown ~110ms in the past, interpolated between two snapshots
       const rt = now - 110;
-      let pose: Pose = { x: st.level.spawn.x, y: st.level.spawn.y, a: 0, gt: 0, dead: false, cp: -1, ps: [] };
+      let pose: Pose = { x: lv.spawn.x, y: lv.spawn.y - st.vehicle.h / 2, a: 0, gt: 0, dead: false, cp: -1, ps: [] };
       if (buf.length) {
         const first = buf[0];
         const newest = buf[buf.length - 1];
@@ -172,9 +208,10 @@ export function TootCanvas({ state, myId }: { state: TootState; myId: string }) 
       pose.ps.forEach((p, i) => {
         const pw = i === slot ? (input.current.fart && (lastGas[i] ?? 0) > 0 ? 1 : 0) : p.p;
         if (pw > 0.1 && !pose.dead) {
-          const sx = slotX(i, n);
-          const px = pose.x + sx * ca - 13 * sa;
-          const py = pose.y + sx * sa + 13 * ca;
+          const sx = slotX(i, n, st.vehicle.w);
+          const oy = st.vehicle.h / 2;
+          const px = pose.x + sx * ca - oy * sa;
+          const py = pose.y + sx * sa + oy * ca;
           const am = i === slot ? aim : p.aim;
           const ex = Math.sin(am) * ca - Math.cos(am) * sa;
           const ey = Math.sin(am) * sa + Math.cos(am) * ca;
@@ -204,9 +241,9 @@ export function TootCanvas({ state, myId }: { state: TootState; myId: string }) 
         if (p.age > p.life) particles.splice(i, 1);
       }
 
-      // camera follows the raft
-      const tx = Math.max(-200, Math.min(st.level.length + 600 - VIEW_W, pose.x - VIEW_W * 0.4));
-      const ty = Math.max(-100, Math.min(st.level.height + 100 - VIEW_H, pose.y - VIEW_H * 0.55));
+      // camera follows the vehicle
+      const tx = Math.max(-200, Math.min(lv.length + 600 - VIEW_W, pose.x - VIEW_W * 0.4));
+      const ty = Math.max(-100, Math.min(lv.height + 100 - VIEW_H, pose.y - VIEW_H * 0.55));
       if (!cam.ready) {
         cam.x = tx;
         cam.y = ty;
@@ -217,7 +254,7 @@ export function TootCanvas({ state, myId }: { state: TootState; myId: string }) 
       }
 
       drawTootScene(ctx, {
-        level: st.level, players: st.players, pose, cam, particles,
+        level: lv, vehicle: st.vehicle, players: st.players, pose, cam, particles,
         mySlot: slot, aimOwn: aim, th, time: ts,
       });
     };
@@ -244,6 +281,7 @@ export function TootCanvas({ state, myId }: { state: TootState; myId: string }) 
     else if (label === "GO!") playSfx("roundStart");
   }, [label]);
   const elapsed = state.phase === "play" ? Math.max(0, now - state.startAt) : state.stats.timeMs;
+  const cooldown = Math.max(0, state.rightReadyAt - now);
 
   const hold = (key: "left" | "right" | "fart") => ({
     onPointerDown: (e: ReactPointerEvent) => {
@@ -265,7 +303,7 @@ export function TootCanvas({ state, myId }: { state: TootState; myId: string }) 
     <div className="toot-wrap mx-auto select-none">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-2xl border-2 border-border bg-card px-3 py-2 text-sm font-semibold">
         <span>
-          🌋 {state.level.name} · {state.levelIndex + 1}/{state.levelCount}
+          {state.vehicle.emoji} {level.name} · {state.levelIndex + 1}/{state.levelCount}
         </span>
         <span>⏱ {(elapsed / 1000).toFixed(1)}s</span>
         <span>💀 {state.stats.deaths}</span>
@@ -292,8 +330,8 @@ export function TootCanvas({ state, myId }: { state: TootState; myId: string }) 
           style={{ aspectRatio: `${VIEW_W} / ${VIEW_H}` }}
         />
         {banner && (
-          <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center">
-            <div className="rounded-2xl border-2 border-border bg-card/95 px-4 py-2 font-display text-lg font-bold">
+          <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center px-2">
+            <div className="rounded-2xl border-2 border-border bg-card/95 px-4 py-2 text-center font-display text-base font-bold sm:text-lg">
               {banner}
             </div>
           </div>
@@ -312,6 +350,18 @@ export function TootCanvas({ state, myId }: { state: TootState; myId: string }) 
         )}
       </div>
 
+      <div className="mt-3 flex touch-none gap-3">
+        <div
+          onPointerDown={straighten}
+          className={`${small} flex-1 ${stuck ? "ring-4 ring-ring" : ""} ${cooldown > 0 ? "opacity-50" : ""}`}
+        >
+          ↺ Straighten (R){cooldown > 0 ? ` ${Math.ceil(cooldown / 1000)}s` : ""}
+        </div>
+        <div onPointerDown={backToCheckpoint} className={`${small} flex-1 ${stuck ? "ring-4 ring-ring" : ""}`}>
+          ⟲ Back to checkpoint (C)
+        </div>
+      </div>
+
       {mySlot >= 0 && (
         <div className="mt-3 flex touch-none gap-3">
           <div {...hold("left")} className={`${btn} flex-1 bg-secondary text-3xl text-secondary-foreground`}>
@@ -326,7 +376,7 @@ export function TootCanvas({ state, myId }: { state: TootState; myId: string }) 
         </div>
       )}
       <p className="mt-2 hidden text-center text-sm text-muted-foreground sm:block">
-        A / D (or ← →) to aim · hold Space to fart
+        A / D (or ← →) aim · hold Space to fart · R straighten · C back to checkpoint
       </p>
     </div>
   );

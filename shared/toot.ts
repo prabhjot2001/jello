@@ -5,10 +5,20 @@ export interface TootRect {
   h: number;
 }
 
-/** Spikes are a static strip. A saw is a circle (x, y, w, h is its bounding box) that can move up and down. */
+export type TootSkin =
+  | "spikes" | "poop" | "thorns" | "fire"
+  | "saw" | "roach" | "dog" | "dino" | "spider" | "bat" | "ghost" | "chainsaw"
+  | "hammer" | "blade";
+
+/**
+ * A hazard is a rectangle (floor strips) or a circle (radius = w / 2).
+ * Slide motion: the center moves by (ax, ay) * sin(...).
+ * Swing motion (pendulum): the tip hangs from a pivot and swings by +-amp radians.
+ */
 export interface TootHazard {
   id: number;
-  kind: "spikes" | "saw";
+  shape: "rect" | "circle";
+  skin: TootSkin;
   x: number;
   y: number;
   w: number;
@@ -17,18 +27,60 @@ export interface TootHazard {
   ay: number;
   period: number;
   phase: number;
+  swing?: { px: number; py: number; len: number; amp: number };
+  /** spiders hang on a thread from this y */
+  hangFrom?: number;
+}
+
+export interface TootTheme {
+  skyTop: string;
+  skyBottom: string;
+  rock: string;
+  rockEdge: string;
+  /** emoji for the slow background layer and the faster one in front of it */
+  far: string[];
+  near: string[];
+}
+
+export interface TootMapInfo {
+  id: string;
+  name: string;
+  emoji: string;
+  tagline: string;
+  hazards: string;
+  theme: TootTheme;
+}
+
+export interface TootVehicleInfo {
+  id: string;
+  name: string;
+  emoji: string;
+  color: string;
+  w: number;
+  h: number;
+  /** thrust multiplier */
+  power: number;
+  /** stability multiplier: higher means the vehicle tilts less */
+  control: number;
+  premium: boolean;
+  unlockStars: number;
+  wheels: boolean;
+  propeller: boolean;
 }
 
 export interface TootLevel {
   index: number;
+  mapId: string;
   name: string;
   length: number;
   height: number;
+  /** spawn.y is the ground the vehicle stands on */
   spawn: { x: number; y: number };
   checkpoints: { x: number; y: number }[];
   finishX: number;
   solids: TootRect[];
   hazards: TootHazard[];
+  theme: TootTheme;
 }
 
 export interface TootPlayer {
@@ -46,15 +98,34 @@ export interface TootCounts {
   timeMs: number;
 }
 
+export interface TootGarage {
+  map: string;
+  vehicle: string;
+  avatars: Record<string, string>;
+  ready: Record<string, boolean>;
+}
+
+export interface TootPick {
+  avatar?: string;
+  map?: string;
+  vehicle?: string;
+}
+
 export interface TootState {
-  phase: "countdown" | "play" | "clear" | "final";
+  phase: "garage" | "countdown" | "play" | "clear" | "final";
+  maps: TootMapInfo[];
+  vehicles: TootVehicleInfo[];
+  garage: TootGarage;
+  vehicle: TootVehicleInfo;
   levelIndex: number;
   levelCount: number;
-  level: TootLevel;
+  level: TootLevel | null;
   players: TootPlayer[];
   startAt: number;
   stats: TootCounts;
   totals: TootCounts | null;
+  /** server time when "Straighten" can be used again */
+  rightReadyAt: number;
 }
 
 export interface TootInput {
@@ -83,4 +154,8 @@ export interface TootSnapshot {
 export type TootEvent =
   | { kind: "fail"; reason: "capsize" | "hazard" | "fell"; blameId: string | null; name: string }
   | { kind: "checkpoint"; index: number }
-  | { kind: "respawn" };
+  | { kind: "respawn" }
+  | { kind: "stuck" }
+  | { kind: "right"; name: string }
+  | { kind: "vote"; name: string; votes: number; needed: number }
+  | { kind: "reset"; name: string };

@@ -96,7 +96,7 @@ io.on("connection", (socket) => {
     const room = getRoom(socket.id);
     if (!room || room.phase !== "lobby") return;
     room.gameId = gameId;
-        room.limits = limitsFor(gameId);
+    room.limits = limitsFor(gameId);
     room.players.forEach((p) => (p.ready = false));
     broadcast(room);
   });
@@ -121,14 +121,18 @@ io.on("connection", (socket) => {
   socket.on("room:start", () => {
     const room = getRoom(socket.id);
     if (!room || !room.gameId) return;
-       const { min, max } = room.limits;
-    if (room.players.length < min || room.players.length > max || !room.players.every((p) => p.ready)) return;
+    const { min, max } = room.limits;
+    if (
+      room.players.length < min ||
+      room.players.length > max ||
+      !room.players.every((p) => p.ready)
+    )
+      return;
     room.phase = "playing";
     broadcast(room);
     if (room.gameId === "movie-guess") startMovieGame(io, room);
     if (room.gameId === "kart-race") startKartGame(io, room);
     if (room.gameId === "toot-raft") startTootGame(io, room);
-    
   });
 
   socket.on("room:back", () => {
@@ -136,7 +140,7 @@ io.on("connection", (socket) => {
     if (!room) return;
     stopMovieGame(room.code);
     stopKartGame(room.code);
-        stopTootGame(room.code);
+    stopTootGame(room.code);
     room.phase = "lobby";
     room.players.forEach((p) => (p.ready = false));
     broadcast(room);
@@ -190,8 +194,7 @@ io.on("connection", (socket) => {
     if (room && peer) socket.to(room.code).volatile.emit("kart:peer", peer);
   });
 
-
-    /* ----- toot raft ----- */
+  /* ----- toot raft ----- */
 
   const toot = () => {
     const room = getRoom(socket.id);
@@ -205,9 +208,12 @@ io.on("connection", (socket) => {
   socket.on("toot:input", (input) => toot()?.setInput(socket.id, input));
   socket.on("toot:next", () => toot()?.next());
   socket.on("toot:again", () => toot()?.again());
+  
+  socket.on("toot:pick", (p) => toot()?.pick(socket.id, p ?? {}));
+  socket.on("toot:ready", (ready) => toot()?.setReady(socket.id, !!ready));
+  socket.on("toot:right", () => toot()?.right(socket.id));
+  socket.on("toot:reset", () => toot()?.voteReset(socket.id));
 });
-
-
 
 const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => console.log(`server on :${PORT}`));

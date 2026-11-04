@@ -11,7 +11,7 @@ import type {
   KartSnapshot,
   KartState,
 } from "./kart.js";
-import type { TootEvent, TootInput, TootSnapshot, TootState } from "./toot.js";
+import type { TootEvent, TootInput, TootPick, TootSnapshot, TootState } from "./toot.js";
 
 export interface Player {
   id: string;
@@ -50,6 +50,10 @@ export interface ClientToServer {
   "room:start": () => void;
   "room:back": () => void;
   "time:sync": (ack: (serverTime: number) => void) => void;
+    "toot:pick": (p: TootPick) => void;
+  "toot:ready": (ready: boolean) => void;
+  "toot:right": () => void;
+  "toot:reset": () => void;
 
   "movie:request-state": () => void;
   "movie:guess": (text: string) => void;
