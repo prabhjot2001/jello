@@ -3,7 +3,7 @@ import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { playSfx } from "@/theme/sound";
+import { playSfx } from "@/theme/sounds";
 import { socket } from "@/socket";
 import { usePlayerStore } from "@/store/player";
 import { GAMES } from "@/games/registry";

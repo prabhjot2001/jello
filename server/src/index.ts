@@ -14,6 +14,7 @@ import type {
 } from "../../shared/events.js";
 import { createRoom, joinRoom, getRoom, leaveRoom } from "./rooms.js";
 import {
+  addSeen,
   getMovieGame,
   startMovieGame,
   stopMovieGame,
@@ -21,6 +22,7 @@ import {
 import { applySettings } from "./games/movieSettings.js";
 import { getKartGame, startKartGame, stopKartGame } from "./games/kartRace.js";
 import { getTootGame, startTootGame, stopTootGame } from "./games/tootRaft.js";
+import { getTankGame, startTankGame, stopTankGame } from "./games/tankDuel.js";
 import { limitsFor } from "./games/limits.js";
 
 const app = express();
@@ -59,6 +61,7 @@ io.on("connection", (socket) => {
       stopMovieGame(room.code);
       stopKartGame(room.code);
       stopTootGame(room.code);
+      stopTankGame(room.code);
       socket.leave(room.code);
       broadcast(room);
     }
@@ -133,6 +136,7 @@ io.on("connection", (socket) => {
     if (room.gameId === "movie-guess") startMovieGame(io, room);
     if (room.gameId === "kart-race") startKartGame(io, room);
     if (room.gameId === "toot-raft") startTootGame(io, room);
+    if (room.gameId === "tank-duel") startTankGame(io, room);
   });
 
   socket.on("room:back", () => {
@@ -141,6 +145,7 @@ io.on("connection", (socket) => {
     stopMovieGame(room.code);
     stopKartGame(room.code);
     stopTootGame(room.code);
+    stopTankGame(room.code);
     room.phase = "lobby";
     room.players.forEach((p) => (p.ready = false));
     broadcast(room);
@@ -158,6 +163,11 @@ io.on("connection", (socket) => {
   socket.on("movie:guess", (text) => {
     const room = getRoom(socket.id);
     if (room) getMovieGame(room.code)?.guess(socket.id, text);
+  });
+
+  socket.on("movie:history", (ids) => {
+    const room = getRoom(socket.id);
+    if (room && Array.isArray(ids)) addSeen(room.code, ids);
   });
 
   socket.on("movie:skip", () => {
@@ -213,6 +223,35 @@ io.on("connection", (socket) => {
   socket.on("toot:ready", (ready) => toot()?.setReady(socket.id, !!ready));
   socket.on("toot:right", () => toot()?.right(socket.id));
   socket.on("toot:reset", () => toot()?.voteReset(socket.id));
+  socket.on("toot:custom", (m) => toot()?.setCustom(socket.id, m));
+
+  /* ----- tank duel ----- */
+
+  const tanks = () => {
+    const room = getRoom(socket.id);
+    return room ? getTankGame(room.code) : undefined;
+  };
+
+  socket.on("tanks:request-state", () => {
+    const game = tanks();
+    if (!game) return;
+    socket.emit("tanks:state", game.publicState());
+    const terrain = game.terrainPayload();
+    if (terrain) socket.emit("tanks:terrain", terrain);
+  });
+  socket.on("tanks:pick", (p) => tanks()?.pick(socket.id, p ?? {}));
+  socket.on("tanks:settings", (p) => tanks()?.setSettings(socket.id, p ?? {}));
+  socket.on("tanks:ready", (r) => tanks()?.setReady(socket.id, !!r));
+  socket.on("tanks:buy", (id) => tanks()?.buy(socket.id, String(id)));
+  socket.on("tanks:select", (id) => tanks()?.select(socket.id, String(id)));
+  socket.on("tanks:move", (dir) => tanks()?.move(socket.id, Number(dir)));
+  socket.on("tanks:aim", (a) => {
+    const room = getRoom(socket.id);
+    const peer = room && getTankGame(room.code)?.aim(socket.id, a);
+    if (room && peer) socket.to(room.code).volatile.emit("tanks:aim", peer);
+  });
+  socket.on("tanks:fire", (f) => tanks()?.fire(socket.id, String(f?.weapon), Number(f?.angle), Number(f?.power)));
+  socket.on("tanks:again", () => tanks()?.again());
 });
 
 const PORT = process.env.PORT || 3001;

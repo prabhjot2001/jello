@@ -6,7 +6,7 @@ export interface TootRect {
 }
 
 export type TootSkin =
-  | "spikes" | "poop" | "thorns" | "fire"
+  | "spikes" | "pinkspikes" | "poop" | "thorns" | "fire"
   | "saw" | "roach" | "dog" | "dino" | "spider" | "bat" | "ghost" | "chainsaw"
   | "hammer" | "blade";
 
@@ -32,6 +32,7 @@ export interface TootHazard {
   hangFrom?: number;
 }
 
+/** Empty color strings mean "use the app theme". */
 export interface TootTheme {
   skyTop: string;
   skyBottom: string;
@@ -68,6 +69,37 @@ export interface TootVehicleInfo {
   propeller: boolean;
 }
 
+/** One thing you can place in the map editor. */
+export interface TootKindInfo {
+  id: string;
+  label: string;
+  emoji: string;
+  group: "rock" | "hazard";
+  anchor: "floorPillar" | "ceilPillar" | "gate" | "island" | "strip" | "ground" | "float" | "hang" | "swing";
+  /** what the size slider changes */
+  sizeLabel: string;
+  min: number;
+  max: number;
+  def: number;
+  /** does the item have an adjustable vertical position? */
+  usesY: boolean;
+  yDef: number;
+  /** base width, base height or radius, depending on the anchor */
+  w: number;
+  h: number;
+  /** horizontal movement range of floating hazards */
+  ax: number;
+}
+
+/** A custom map. items are [kind, x, y, size]. Small enough to share as a text code. */
+export interface TootCustomMap {
+  v: 1;
+  name: string;
+  theme: string;
+  length: number;
+  items: [string, number, number, number][];
+}
+
 export interface TootLevel {
   index: number;
   mapId: string;
@@ -81,6 +113,8 @@ export interface TootLevel {
   solids: TootRect[];
   hazards: TootHazard[];
   theme: TootTheme;
+  /** the map this level looks like (for custom maps: the background it uses). Picks the music. */
+  themeId: string;
 }
 
 export interface TootPlayer {
@@ -103,6 +137,7 @@ export interface TootGarage {
   vehicle: string;
   avatars: Record<string, string>;
   ready: Record<string, boolean>;
+  custom: TootCustomMap | null;
 }
 
 export interface TootPick {
@@ -115,6 +150,7 @@ export interface TootState {
   phase: "garage" | "countdown" | "play" | "clear" | "final";
   maps: TootMapInfo[];
   vehicles: TootVehicleInfo[];
+  kinds: TootKindInfo[];
   garage: TootGarage;
   vehicle: TootVehicleInfo;
   levelIndex: number;

@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Sticker } from "@/components/Sticker";
-import { playSfx } from "@/theme/sound";
+import { playSfx } from "@/theme/sounds";
 
 const DECOR = [
   { src: "sticker_046.png", fb: "😼", pos: "left-[3%] top-[6%]", size: 84 },

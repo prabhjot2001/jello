@@ -1,5 +1,5 @@
 import { Howl } from "howler";
-import { TRACKS } from "./themes";
+
 import { useThemeStore } from "./store";
 
 /* ------------------------------------------------------------------
@@ -60,12 +60,6 @@ const VOLUME: Partial<Record<SfxName, number>> = {
    EDIT THIS: game music goes in client/public/music/game/
    While game music plays, the theme music is paused automatically.
 ------------------------------------------------------------------- */
-export const GAME_MUSIC = {
-  kart: ["kart-1.mp3", "kart-2.mp3", "kart-3.mp3"],
-  movie: [] as string[], // optional, leave empty to keep the theme music in Movie Guess
-  toot: [] as string[],
-} as const;
-
 export type GameMusicKey = keyof typeof GAME_MUSIC;
 
 /* ---------- sound effects ---------- */
@@ -115,42 +109,61 @@ export function maybeMeme(chance: number, cooldownMs = 8000): boolean {
   setTimeout(() => playSfx("meme"), 350);
   return true;
 }
+/* ---------- music: only game music, the app itself has no background music ---------- */
 
-/* ---------- music: theme tracks and game music ---------- */
+/**
+ * EDIT THIS: put files in client/public/music/game/.
+ * "toot:sewer" is used for that map. If its list is empty the game-wide key ("toot") is used.
+ */
+export const GAME_MUSIC: Record<string, readonly string[]> = {
+  kart: ["kart-1.mp3", "kart-2.mp3"],
+  "movie:versus": [],
+  "movie:coop": [],
+  movie: [],
+  "toot:garage": [],
+  "toot:sewer": ["sewer-1.mp3"],
+  "toot:mansion": ["mansion-1.mp3"],
+  "toot:jungle": ["jungle-1.mp3"],
+  "toot:street": ["street-1.mp3"],
+  "toot:factory": ["factory-1.mp3"],
+  "toot:classic": ["classic-1.mp3"],
+  toot: [],
+  "tanks:garage": [],
+  "tanks:hills": [],
+  "tanks:canyon": [],
+  "tanks:dunes": [],
+  "tanks:peaks": [],
+  "tanks:volcano": [],
+  "tanks:moon": [],
+  "tanks:islands": [],
+  "tanks:plains": [],
+  "tanks:candy": [],
+  tanks: [],
+};
 
-let themeBgm: Howl | null = null;
-let themeTrackId = "";
 let gameBgm: Howl | null = null;
-let gameKey: GameMusicKey | null = null;
+let gameKey: string | null = null;
 let lastGameFile = "";
 
-const gameFiles = (key: GameMusicKey | null) =>
-  key ? (GAME_MUSIC[key] as readonly string[]) : [];
+function filesFor(key: string | null): readonly string[] {
+  if (!key) return [];
+  const own = GAME_MUSIC[key];
+  if (own && own.length) return own;
+  return GAME_MUSIC[key.split(":")[0]] ?? [];
+}
 
-function makeBgm(
-  src: string,
-  loop: boolean,
-  volume: number,
-  onend?: () => void,
-  onfail?: () => void,
-): Howl {
+function makeBgm(src: string, volume: number, onend: () => void, onfail: () => void): Howl {
   const h: Howl = new Howl({
     src: [encodeURI(src)],
-    loop,
+    loop: false,
     volume,
     html5: true,
     onend,
     // browsers block audio until the first tap or click: retry as soon as it unlocks
     onplayerror: () => h.once("unlock", () => h.play()),
-    onloaderror: () => onfail?.(),
+    onloaderror: () => onfail(),
   });
   return h;
-}
-
-function stopTheme() {
-  themeBgm?.unload();
-  themeBgm = null;
-  themeTrackId = "";
 }
 
 function stopGame() {
@@ -159,75 +172,47 @@ function stopGame() {
 }
 
 function playNextGameTrack() {
-  const files = gameFiles(gameKey);
+  const files = filesFor(gameKey);
   if (!files.length) return;
   let pool = files.filter((f) => f !== lastGameFile);
   if (!pool.length) pool = [...files];
   const file = pool[Math.floor(Math.random() * pool.length)];
   lastGameFile = file;
   gameBgm?.unload();
-  gameBgm = makeBgm(
-    `/music/game/${file}`,
-    false,
-    useThemeStore.getState().volume,
-    playNextGameTrack, // when a track ends, pick another random one
-    () => {
-      // file missing: give the theme music back
-      gameKey = null;
-      syncMusic();
-    },
-  );
+  gameBgm = makeBgm(`/music/game/${file}`, useThemeStore.getState().volume, playNextGameTrack, () => {
+    gameKey = null; // file missing: stay quiet
+    syncMusic();
+  });
   gameBgm.play();
 }
 
-/**
- * Decides what music should be playing right now. Safe to call any time.
- * Rules: 🔇 means silence. Game music replaces the theme music while it is active.
- */
+/** Decides what should be playing right now. Safe to call any time. 🔇 means silence. */
 export function syncMusic() {
-  const { musicOn, trackId, volume } = useThemeStore.getState();
-
-  if (!musicOn) {
-    stopTheme();
+  const { musicOn, volume } = useThemeStore.getState();
+  if (!musicOn || !gameKey || filesFor(gameKey).length === 0) {
     stopGame();
     return;
   }
-
-  if (gameKey && gameFiles(gameKey).length) {
-    stopTheme();
-    if (!gameBgm) playNextGameTrack();
-    else gameBgm.volume(volume);
-    return;
-  }
-
-  stopGame();
-  if (!themeBgm || themeTrackId !== trackId) {
-    stopTheme();
-    const track = TRACKS.find((t) => t.id === trackId);
-    if (!track) return;
-    themeBgm = makeBgm(track.src, true, volume);
-    themeTrackId = trackId;
-    themeBgm.play();
-  } else {
-    themeBgm.volume(volume);
-  }
+  if (!gameBgm) playNextGameTrack();
+  else gameBgm.volume(volume);
 }
 
 export function setMusicVolume(v: number) {
-  themeBgm?.volume(v);
   gameBgm?.volume(v);
 }
 
-/** Start game music (stops the theme music). Calling it again for the same game does nothing. */
-export function startGameMusic(key: GameMusicKey) {
-  if (gameKey === key) return;
+/** Start the music for a game or a map. Calling it again with the same key does nothing. */
+export function startGameMusic(key: string) {
+  if (gameKey === key) {
+    syncMusic();
+    return;
+  }
   gameKey = key;
   lastGameFile = "";
   stopGame();
   syncMusic();
 }
 
-/** Stop game music and bring the theme music back (if 🔊 is on). */
 export function stopGameMusic() {
   gameKey = null;
   syncMusic();

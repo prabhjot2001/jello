@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { motion } from "framer-motion";
 import { socket } from "@/socket";
-import { maybeMeme, playSfx } from "@/theme/sound";
+import { maybeMeme, playSfx } from "@/theme/sounds";
 import { serverNow, useServerTime } from "@/lib/clock";
 import type { TootEvent, TootLevel, TootSnapshot, TootState } from "@/types";
 import { readTheme } from "../kart/engine";

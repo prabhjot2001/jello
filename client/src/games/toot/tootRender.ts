@@ -1,6 +1,7 @@
 import type { TootHazard, TootLevel, TootPlayer, TootPlayerSnap, TootVehicleInfo } from "@/types";
 import { findAvatar, getAvatarImage } from "../kart/avatars";
 import type { Theme } from "../kart/engine";
+import { flySticker, hazardSticker, vehicleSticker } from "./stickers";
 
 export const VIEW_W = 800;
 export const VIEW_H = 500;
@@ -30,6 +31,7 @@ export interface Particle {
 }
 
 const FONT = '"Fredoka Variable", "Nunito Variable", sans-serif';
+const FLIPPED = ["roach", "dog", "dino", "bat", "chainsaw"];
 
 function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
@@ -67,9 +69,19 @@ export function drawAvatar(ctx: CanvasRenderingContext2D, id: string, x: number,
   }
 }
 
-/** The vehicle hull, centered on (0, 0). A row of its emoji decorates the hull. */
+/** The vehicle, centered on (0, 0): a sticker if the file exists, otherwise a hull decorated with its emoji. */
 export function drawVehicle(ctx: CanvasRenderingContext2D, v: TootVehicleInfo, ink: string, time: number) {
   const { w, h } = v;
+
+  const sticker = vehicleSticker(v.id);
+  if (sticker) {
+    const s = Math.min((w * 1.15) / sticker.naturalWidth, (h * 2.6) / sticker.naturalHeight);
+    const dw = sticker.naturalWidth * s;
+    const dh = sticker.naturalHeight * s;
+    ctx.drawImage(sticker, -dw / 2, h / 2 - dh, dw, dh);
+    return;
+  }
+
   ctx.lineWidth = 3;
   ctx.strokeStyle = ink;
 
@@ -119,19 +131,103 @@ function hazardPos(h: TootHazard, gt: number) {
   return { x: h.x + h.w / 2 + h.ax * s, y: h.y + h.h / 2 + h.ay * s, a: 0, dir: Math.cos(phase) * (h.ax || 1) };
 }
 
+function drawFlies(ctx: CanvasRenderingContext2D, px: number, py: number, time: number, i: number) {
+  const fly = flySticker();
+  for (let k = 0; k < 2; k++) {
+    const fx = px + Math.cos(time / 250 + i * 1.7 + k * 3.1) * 26;
+    const fy = py - 34 + Math.sin(time / 170 + i + k * 2) * 10;
+    if (fly) ctx.drawImage(fly, fx - 11, fy - 11, 22, 22);
+    else emoji(ctx, "🪰", fx, fy, 22);
+  }
+}
+
+function drawHazardSticker(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  h: TootHazard,
+  p: { x: number; y: number; a: number; dir: number },
+  time: number,
+  th: Theme,
+  height: number
+) {
+  const ar = img.naturalWidth / img.naturalHeight;
+
+  if (h.shape === "rect") {
+    // strips: tile the sticker along the width, mirrored when it hangs from the ceiling
+    const ceiling = h.y + h.h / 2 < height / 2;
+    const size = h.h * 1.5;
+    const dw = size * ar;
+    const count = Math.max(1, Math.round(h.w / dw));
+    const tw = h.w / count;
+    ctx.save();
+    if (ceiling) {
+      ctx.translate(0, h.y * 2 + h.h);
+      ctx.scale(1, -1);
+    }
+    for (let i = 0; i < count; i++) {
+      const cx = h.x + (i + 0.5) * tw;
+      ctx.drawImage(img, cx - dw / 2, h.y + h.h - size, dw, size);
+    }
+    ctx.restore();
+    if (h.skin === "poop") {
+      for (let i = 0; i < count; i++) drawFlies(ctx, h.x + (i + 0.5) * tw, h.y + h.h / 2 + 2, time, i);
+    }
+    return;
+  }
+
+  const r = h.w / 2;
+  const size = r * 2.2;
+  const dw = ar >= 1 ? size : size * ar;
+  const dh = ar >= 1 ? size / ar : size;
+
+  if (h.swing) {
+    ctx.strokeStyle = th.ink;
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(h.swing.px, h.swing.py);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+  }
+  if (h.skin === "spider") {
+    ctx.strokeStyle = "rgba(255,255,255,0.8)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(p.x, h.hangFrom ?? 0);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+  }
+
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  if (h.swing) ctx.rotate(p.a);
+  else if (h.skin === "saw") ctx.rotate(time / 180);
+  else if (p.dir > 0 && FLIPPED.includes(h.skin)) ctx.scale(-1, 1);
+  ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+  ctx.restore();
+}
+
 function drawHazard(ctx: CanvasRenderingContext2D, h: TootHazard, gt: number, time: number, th: Theme, height: number) {
   const p = hazardPos(h, gt);
+
+  // a sticker replaces the built-in drawing when the file exists
+  const img = hazardSticker(h.skin);
+  if (img) {
+    drawHazardSticker(ctx, img, h, p, time, th, height);
+    return;
+  }
+
   const r = h.w / 2;
   ctx.lineWidth = 2;
   ctx.strokeStyle = th.ink;
 
   switch (h.skin) {
     case "spikes":
+    case "pinkspikes":
     case "thorns": {
       const up = h.y + h.h / 2 > height / 2;
       const count = Math.max(1, Math.round(h.w / 30));
       const tw = h.w / count;
-      ctx.fillStyle = h.skin === "spikes" ? "#C9D1DC" : "#5CB85C";
+      ctx.fillStyle = h.skin === "spikes" ? "#C9D1DC" : h.skin === "thorns" ? "#5CB85C" : "#FF7B9C";
       for (let i = 0; i < count; i++) {
         ctx.beginPath();
         if (up) {
@@ -162,14 +258,7 @@ function drawHazard(ctx: CanvasRenderingContext2D, h: TootHazard, gt: number, ti
         const px = h.x + ((i + 0.5) * h.w) / count;
         const py = h.y + h.h / 2 + 2;
         emoji(ctx, "💩", px, py, 54);
-        for (let k = 0; k < 2; k++) {
-          emoji(
-            ctx, "🪰",
-            px + Math.cos(time / 250 + i * 1.7 + k * 3.1) * 26,
-            py - 34 + Math.sin(time / 170 + i + k * 2) * 10,
-            22
-          );
-        }
+        drawFlies(ctx, px, py, time, i);
       }
       break;
     }
@@ -257,16 +346,12 @@ function drawHazard(ctx: CanvasRenderingContext2D, h: TootHazard, gt: number, ti
       ctx.moveTo(sw.px, sw.py);
       ctx.lineTo(p.x, p.y);
       ctx.stroke();
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.a);
       if (h.skin === "hammer") {
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.a);
         emoji(ctx, "🔨", 0, 0, r * 2.3);
-        ctx.restore();
       } else {
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.a);
         ctx.fillStyle = "#DDE5EE";
         ctx.lineWidth = 3;
         ctx.beginPath();
@@ -275,8 +360,8 @@ function drawHazard(ctx: CanvasRenderingContext2D, h: TootHazard, gt: number, ti
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
-        ctx.restore();
       }
+      ctx.restore();
       break;
     }
   }
@@ -302,14 +387,15 @@ export function drawTootScene(
   const theme = level.theme;
   ctx.clearRect(0, 0, VIEW_W, VIEW_H);
 
-  // map background: gradient and two parallax layers of emoji
+  // map background: gradient and two parallax layers of emoji (empty colors use the app theme)
   const sky = ctx.createLinearGradient(0, 0, 0, VIEW_H);
-  sky.addColorStop(0, theme.skyTop);
-  sky.addColorStop(1, theme.skyBottom);
+  sky.addColorStop(0, theme.skyTop || th.skyTop);
+  sky.addColorStop(1, theme.skyBottom || th.skyBottom);
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
 
   const layer = (items: string[], par: number, size: number, alpha: number, yBase: number, spacing: number) => {
+    if (!items.length) return;
     const span = spacing * 9;
     for (let i = 0; i < 9; i++) {
       const x = ((((i * spacing - cam.x * par) % span) + span) % span) - spacing;
@@ -326,8 +412,8 @@ export function drawTootScene(
     x + w > cam.x - 100 && x < cam.x + VIEW_W + 100 && y + h > cam.y - 100 && y < cam.y + VIEW_H + 100;
 
   // rock
-  ctx.fillStyle = theme.rock;
-  ctx.strokeStyle = theme.rockEdge;
+  ctx.fillStyle = theme.rock || "#D8CBF0";
+  ctx.strokeStyle = theme.rockEdge || th.ink;
   ctx.lineWidth = 3;
   for (const s of level.solids) {
     if (!inView(s.x, s.y, s.w, s.h)) continue;

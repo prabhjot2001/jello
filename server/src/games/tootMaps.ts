@@ -82,6 +82,20 @@ export const MAPS: MapDef[] = [
     },
     palette: [["saw", 3], ["chainsaw", 3], ["hammer", 2], ["blade", 2], ["spikes", 2]],
   },
+  {
+    info: {
+      id: "classic",
+      name: "Classic Cave",
+      emoji: "🕳️",
+      tagline: "The original course: tight gates, pillars, spikes and saw wheels.",
+      hazards: "Candy spikes and up-and-down saw wheels",
+      theme: {
+        skyTop: "", skyBottom: "", rock: "#D8CBF0", rockEdge: "",
+        far: ["☁️"], near: [],
+      },
+    },
+    palette: [],
+  },
 ];
 
 export const MAP_INFOS = MAPS.map((m) => m.info);

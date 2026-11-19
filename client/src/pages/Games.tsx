@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { playSfx } from "@/theme/sound";
+import { playSfx } from "@/theme/sounds";
 import { GAMES } from "@/games/registry";
 
 const stickerCard =

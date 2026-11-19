@@ -1,4 +1,5 @@
 import type {
+  MovieChat,
   MovieEvent,
   MovieMode,
   MovieSettings,
@@ -11,7 +12,8 @@ import type {
   KartSnapshot,
   KartState,
 } from "./kart.js";
-import type { TootEvent, TootInput, TootPick, TootSnapshot, TootState } from "./toot.js";
+import type { TootCustomMap, TootEvent, TootInput, TootPick, TootSnapshot, TootState } from "./toot.js";
+import type { TankAim, TankPick, TankSettings, TankShot, TanksState, TankTerrain } from "./tanks.js";
 
 export interface Player {
   id: string;
@@ -54,6 +56,18 @@ export interface ClientToServer {
   "toot:ready": (ready: boolean) => void;
   "toot:right": () => void;
   "toot:reset": () => void;
+  "toot:custom": (m: TootCustomMap) => void;
+  "movie:history": (ids: string[]) => void;
+  "tanks:request-state": () => void;
+  "tanks:pick": (p: TankPick) => void;
+  "tanks:settings": (p: Partial<TankSettings>) => void;
+  "tanks:ready": (ready: boolean) => void;
+  "tanks:buy": (weapon: string) => void;
+  "tanks:select": (weapon: string) => void;
+  "tanks:move": (dir: number) => void;
+  "tanks:aim": (a: { angle: number; power: number }) => void;
+  "tanks:fire": (f: { weapon: string; angle: number; power: number }) => void;
+  "tanks:again": () => void;
 
   "movie:request-state": () => void;
   "movie:guess": (text: string) => void;
@@ -75,6 +89,12 @@ export interface ClientToServer {
 }
 
 export interface ServerToClient {
+  "movie:chat": (m: MovieChat) => void;
+  "tanks:state": (s: TanksState) => void;
+  "tanks:terrain": (t: TankTerrain) => void;
+  "tanks:shot": (s: TankShot) => void;
+  "tanks:aim": (a: TankAim) => void;
+
   "room:state": (state: RoomState) => void;
   "movie:state": (state: MovieState) => void;
   "movie:event": (event: MovieEvent) => void;

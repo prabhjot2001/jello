@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Sticker } from "@/components/Sticker";
 import { socket } from "@/socket";
-import { playSfx } from "@/theme/sound";
+import { playSfx } from "@/theme/sounds";
 import type { KartSettings, KartState } from "@/types";
 import { AVATARS, COLORS } from "./avatars";
 import { KartPreview } from "./KartPreview";

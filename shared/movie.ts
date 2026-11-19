@@ -57,7 +57,7 @@ export interface MovieState {
   startedAt: number;
   endsAt: number;
   scores: ScoreRow[];
-  reveal: { title: string; winnerId: string | null; points: number } | null;
+  reveal: { title: string; winnerId: string | null; points: number; id: string } | null;
   coop: {
     solved: number;
     target: number;
@@ -80,6 +80,17 @@ export type MovieEvent =
       partial: boolean;
     }
   | { kind: "wrong"; playerId: string; name: string; text?: string }
+  | { kind: "close" }
   | { kind: "timeout" }
   | { kind: "skip"; name: string }
   | { kind: "final"; winnerId: string | null };
+
+export interface MovieChat {
+  id: number;
+  playerId: string;
+  name: string;
+  text: string;
+  kind: "guess" | "chat" | "correct" | "system";
+  /** true when only the missing word of a "finish the line" round was guessed */
+  partial?: boolean;
+}

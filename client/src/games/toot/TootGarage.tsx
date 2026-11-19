@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Sticker } from "@/components/Sticker";
 import { socket } from "@/socket";
-import { playSfx } from "@/theme/sound";
+import { playSfx } from "@/theme/sounds";
+import { saveMap } from "@/lib/customMaps";
 import { totalStars } from "@/lib/tootProgress";
 import type { TootPlayer, TootState, TootVehicleInfo } from "@/types";
 import { AVATARS } from "../kart/avatars";
 import { readTheme } from "../kart/engine";
 import { drawAvatar, drawVehicle, slotX } from "./tootRender";
+import { TootMapEditor } from "./TootMapEditor";
 
 const card = "rounded-3xl border-2 border-border bg-card p-5 shadow-[4px_4px_0_0_var(--border)]";
 
@@ -59,14 +61,20 @@ function StatBar({ label, value }: { label: string; value: number }) {
 
 export function TootGarage({ state, myId }: { state: TootState; myId: string }) {
   const [toast, setToast] = useState("");
+  const [editing, setEditing] = useState(false);
   const stars = totalStars();
   const ready = !!state.garage.ready[myId];
   const myAvatar = state.garage.avatars[myId];
+  const custom = state.garage.custom;
+  const customTheme = custom ? state.maps.find((m) => m.id === custom.theme)?.theme : undefined;
 
   const say = (text: string) => {
     setToast(text);
     setTimeout(() => setToast(""), 2400);
   };
+
+  const gradient = (top?: string, bottom?: string) =>
+    `linear-gradient(${top || "var(--secondary)"}, ${bottom || "var(--background)"})`;
 
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-6">
@@ -119,7 +127,26 @@ export function TootGarage({ state, myId }: { state: TootState; myId: string }) 
       </section>
 
       <Card className={card}>
-        <h2 className="mb-3 font-display text-xl font-bold">🗺️ Choose a map</h2>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-display text-xl font-bold">🗺️ Choose a map</h2>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+              🛠️ Create or edit maps
+            </Button>
+            {custom && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  saveMap(custom);
+                  say("Saved on this device. Find it in the map editor.");
+                }}
+              >
+                💾 Save this map on my device
+              </Button>
+            )}
+          </div>
+        </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {state.maps.map((m) => (
             <button
@@ -131,7 +158,7 @@ export function TootGarage({ state, myId }: { state: TootState; myId: string }) 
               className={`rounded-2xl border-2 border-border p-3 text-left transition hover:-translate-y-0.5 ${
                 state.garage.map === m.id ? "ring-4 ring-ring" : ""
               }`}
-              style={{ background: `linear-gradient(${m.theme.skyTop}, ${m.theme.skyBottom})` }}
+              style={{ background: gradient(m.theme.skyTop, m.theme.skyBottom) }}
             >
               <div className="flex items-center gap-2">
                 <span className="text-3xl">{m.emoji}</span>
@@ -141,6 +168,27 @@ export function TootGarage({ state, myId }: { state: TootState; myId: string }) 
               <p className="mt-1 text-[11px] text-white/80">⚠️ {m.hazards}</p>
             </button>
           ))}
+          {custom && (
+            <button
+              onClick={() => {
+                socket.emit("toot:pick", { map: "custom" });
+                playSfx("click");
+              }}
+              className={`rounded-2xl border-2 border-border p-3 text-left transition hover:-translate-y-0.5 ${
+                state.garage.map === "custom" ? "ring-4 ring-ring" : ""
+              }`}
+              style={{ background: gradient(customTheme?.skyTop, customTheme?.skyBottom) }}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-3xl">🛠️</span>
+                <span className="font-display font-bold text-white drop-shadow">{custom.name}</span>
+              </div>
+              <p className="mt-1 text-xs text-white/90">Custom map made by your team.</p>
+              <p className="mt-1 text-[11px] text-white/80">
+                {custom.items.length} items · {Math.round(custom.length / 100) / 10}k long · 1 level
+              </p>
+            </button>
+          )}
         </div>
       </Card>
 
@@ -162,7 +210,7 @@ export function TootGarage({ state, myId }: { state: TootState; myId: string }) 
                 } ${locked ? "opacity-60" : ""}`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-3xl">{v.emoji}</span>
+                  <Sticker src={`vehicles/${v.id}.png`} fallback={v.emoji} size={40} />
                   {v.premium && <Badge>{locked ? `🔒 ${v.unlockStars}⭐` : "⭐ Premium"}</Badge>}
                 </div>
                 <div className="mt-1 font-display text-sm font-bold">{v.name}</div>
@@ -192,6 +240,19 @@ export function TootGarage({ state, myId }: { state: TootState; myId: string }) 
         </Button>
         {ready && <p className="text-sm text-muted-foreground">Waiting for the others to be ready…</p>}
       </div>
+
+      {editing && (
+        <TootMapEditor
+          kinds={state.kinds}
+          maps={state.maps}
+          onClose={() => setEditing(false)}
+          onUse={(spec) => {
+            socket.emit("toot:custom", spec);
+            setEditing(false);
+            say("Custom map sent to the room.");
+          }}
+        />
+      )}
     </main>
   );
 }

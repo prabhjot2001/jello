@@ -10,10 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { socket } from "@/socket";
-import { playSfx } from "@/theme/sound";
+import { playSfx, startGameMusic, stopGameMusic } from "@/theme/sounds";
 import { serverNow, syncClock, useServerTime } from "@/lib/clock";
-import type { MovieState, RoomState } from "@/types";
-import { useMovieGame, type FeedItem } from "./useMovieGame";
+import type { MovieChat, MovieState, RoomState } from "@/types";
+import { useMovieGame } from "./useMovieGame";
 import { Result } from "./Result";
 
 const card =
@@ -31,9 +31,14 @@ function pointsNow(state: MovieState, now: number): number {
 
 
 export default function MovieGame({ myId }: { room: RoomState; myId: string }) {
-  const { state, feed, shake } = useMovieGame(myId);
+  const { state, chat, shake } = useMovieGame(myId);
   const now = useServerTime();
   const lastTick = useRef(-1);
+
+  useEffect(() => {
+    if (state) startGameMusic(`movie:${state.mode}`);
+  }, [state?.mode]);
+  useEffect(() => () => stopGameMusic(), []);
 
   useEffect(() => {
     syncClock();
@@ -82,12 +87,14 @@ export default function MovieGame({ myId }: { room: RoomState; myId: string }) {
           </Card>
         )}
 
-      {state.phase === "round" && <GuessBox coop={coop} shake={shake} />}
       {state.phase === "reveal" && <Reveal state={state} myId={myId} />}
-
-      {coop && state.phase === "round" && (
-        <CoopExtras lastAnswer={state.coop?.lastAnswer ?? null} feed={feed} />
+      {coop && state.phase === "round" && state.coop?.lastAnswer && (
+        <p className="text-sm text-muted-foreground">
+          Last answer: <span className="font-semibold text-foreground">{state.coop.lastAnswer}</span>
+        </p>
       )}
+      <ChatBox chat={chat} myId={myId} />
+      <GuessBox coop={coop} shake={shake} inRound={state.phase === "round"} />
     </main>
   );
 }
@@ -301,7 +308,43 @@ function PuzzleView({ state }: { state: MovieState }) {
 
 /* ---------- guessing ---------- */
 
-function GuessBox({ coop, shake }: { coop: boolean; shake: number }) {
+function ChatBox({ chat, myId }: { chat: MovieChat[]; myId: string }) {
+  const box = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = box.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [chat.length]);
+
+  return (
+    <div ref={box} className="h-44 overflow-y-auto rounded-2xl border-2 border-border bg-card p-3 text-sm">
+      {chat.length === 0 && <p className="text-muted-foreground">Guesses and messages show up here.</p>}
+      {chat.map((m) => {
+        if (m.kind === "system") {
+          return (
+            <p key={m.id} className="italic text-muted-foreground">
+              {m.text}
+            </p>
+          );
+        }
+        if (m.kind === "correct") {
+          return (
+            <p key={m.id} className="font-semibold text-green-600">
+              ✅ {m.playerId === myId ? "You" : m.name} guessed {m.partial ? "the missing word" : "it"}!
+            </p>
+          );
+        }
+        return (
+          <p key={m.id}>
+            <span className="font-semibold">{m.playerId === myId ? "You" : m.name}:</span> {m.text}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+function GuessBox({ coop, shake, inRound }: { coop: boolean; shake: number; inRound: boolean }) {
   const [text, setText] = useState("");
 
   const submit = (e: FormEvent) => {
@@ -324,51 +367,22 @@ function GuessBox({ coop, shake }: { coop: boolean; shake: number }) {
           autoFocus
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Type the movie name…"
-          maxLength={80}
+          placeholder={inRound ? "Type your guess or chat…" : "Say something…"}
+          maxLength={100}
           autoComplete="off"
           autoCapitalize="none"
           className="h-12 text-lg"
         />
       </motion.div>
       <Button type="submit" className="h-12 px-6">
-        Guess
+        Send
       </Button>
-      {coop && (
-        <Button
-          type="button"
-          variant="outline"
-          className="h-12"
-          onClick={() => socket.emit("movie:skip")}
-        >
+      {coop && inRound && (
+        <Button type="button" variant="outline" className="h-12" onClick={() => socket.emit("movie:skip")}>
           Skip
         </Button>
       )}
     </form>
-  );
-}
-
-function CoopExtras({
-  lastAnswer,
-  feed,
-}: {
-  lastAnswer: string | null;
-  feed: FeedItem[];
-}) {
-  return (
-    <div className="flex flex-col gap-1 text-sm text-muted-foreground">
-      {lastAnswer && (
-        <p>
-          Last answer:{" "}
-          <span className="font-semibold text-foreground">{lastAnswer}</span>
-        </p>
-      )}
-      {feed.map((f) => (
-        <p key={f.id}>
-          {f.mine ? "You" : f.name}: {f.text} ❌
-        </p>
-      ))}
-    </div>
   );
 }
 

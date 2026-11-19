@@ -3,7 +3,7 @@ import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { socket } from "@/socket";
-import { playSfx } from "@/theme/sound";
+import { playSfx } from "@/theme/sounds";
 import type { MovieState } from "@/types";
 
 const card =

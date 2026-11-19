@@ -6,6 +6,7 @@ import type {
   Player,
 } from "../../../shared/events.js";
 import type {
+  MovieChat,
   MovieEvent,
   MovieMode,
   MovieSettings,
@@ -60,6 +61,11 @@ const seenFor = (code: string) => {
   return s;
 };
 
+export function addSeen(code: string, ids: string[]) {
+  const s = seenFor(code);
+  ids.slice(-300).forEach((id) => s.add(String(id)));
+}
+
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
 
 function shuffle<T>(arr: readonly T[]): T[] {
@@ -106,6 +112,18 @@ function isMatch(guess: string, targets: string[]): boolean {
     if (g === t) return true;
     const tolerance = t.length >= 12 ? 2 : t.length >= 6 ? 1 : 0;
     return tolerance > 0 && distance(g, t) <= tolerance;
+  });
+}
+
+/** A wrong guess that is only a few letters away from the answer. */
+function isClose(guess: string, targets: string[]): boolean {
+  const g = norm(guess);
+  if (g.length < 3) return false;
+  return targets.some((raw) => {
+    const t = norm(raw);
+    if (t.length < 5) return false;
+    const d = distance(g, t);
+    return d > 0 && d <= Math.min(3, Math.ceil(t.length * 0.3));
   });
 }
 
@@ -190,6 +208,8 @@ function buildItem(
   return item;
 }
 
+const FALLBACK_TYPES: PuzzleType[] = ["emoji", "clues", "scramble"];
+
 function planPuzzles(
   count: number,
   wanted: PuzzleType[],
@@ -197,34 +217,33 @@ function planPuzzles(
   seen: Set<string>,
   markCount = count
 ): Prepared[] {
-  let allowed = wanted;
-  let eligible = ALL_MOVIES.filter((m) => availableTypes(m, allowed).length > 0);
-  if (!eligible.length) {
-    allowed = ["emoji"];
-    eligible = [...ALL_MOVIES];
-  }
+  const supported = (m: Movie) => availableTypes(m, wanted).length > 0;
 
-  // prefer movies this room has not played yet; start a new cycle when they run out
-  const fresh = eligible.filter((m) => !seen.has(m.id));
-  let pool: Movie[];
-  if (fresh.length >= count) {
-    pool = shuffle(fresh);
-  } else {
-    pool = [...shuffle(fresh), ...shuffle(eligible.filter((m) => seen.has(m.id)))];
-    seen.clear();
-  }
+  // movies nobody has seen come first; among them the ones that support the chosen round types
+  const unseen = shuffle(ALL_MOVIES.filter((m) => !seen.has(m.id)));
+  const stale = shuffle(ALL_MOVIES.filter((m) => seen.has(m.id)));
+  const ordered = [
+    ...unseen.filter(supported), ...unseen.filter((m) => !supported(m)),
+    ...stale.filter(supported), ...stale.filter((m) => !supported(m)),
+  ];
+
+  // one movie is never used twice in the same game
+  const picked = ordered.slice(0, count);
+  if (unseen.length < count) seen.clear(); // everything was seen: start a new cycle
 
   const used: Partial<Record<PuzzleType, number>> = {};
   const plan: Prepared[] = [];
-  for (let i = 0; i < count; i++) {
-    const movie = pool[i % pool.length];
-    const types = availableTypes(movie, allowed);
+  picked.forEach((movie, i) => {
+    let types = availableTypes(movie, wanted);
+    if (!types.length) types = availableTypes(movie, FALLBACK_TYPES);
+    if (!types.length) types = ["emoji"];
     const least = Math.min(...types.map((t) => used[t] ?? 0));
     const candidates = types.filter((t) => (used[t] ?? 0) === least);
     const type = candidates[Math.floor(Math.random() * candidates.length)];
     used[type] = (used[type] ?? 0) + 1;
     plan.push(buildItem(movie, type, i, decoysFromIndex));
-  }
+  });
+
   plan.slice(0, markCount).forEach((p) => seen.add(p.movie.id));
   return plan;
 }
@@ -280,6 +299,11 @@ export class MovieGame {
   private skipped = 0;
   private lastAnswer: string | null = null;
   private lastGuessAt = new Map<string, number>();
+  private chatId = 0;
+
+  private say(m: Omit<MovieChat, "id">) {
+    this.io.to(this.room.code).emit("movie:chat", { id: ++this.chatId, ...m });
+  }
   private readonly mode: MovieMode;
   private readonly settings: MovieSettings;
 
@@ -312,6 +336,10 @@ export class MovieGame {
       this.plan = planPuzzles(s.coopTarget + 5, wanted, decoysFrom, seen, s.coopTarget);
     }
 
+    console.log(
+      `[movies] room ${this.room.code}: ${this.plan.slice(0, this.mode === "versus" ? s.rounds : s.coopTarget)
+        .map((p) => `${p.movie.title} (${p.type})`).join(" | ")}`
+    );
     await resolveFrames(this.plan, wanted, decoysFrom);
     if (this.destroyed) return;
 
@@ -369,45 +397,43 @@ export class MovieGame {
   /* ----- player actions ----- */
 
   guess(playerId: string, raw: string) {
-    if (this.phase !== "round") return;
     const player = this.room.players.find((p) => p.id === playerId);
-    const item = this.plan[this.idx];
-    if (!player || !item) return;
+    if (!player) return;
 
-    const text = String(raw ?? "")
-      .trim()
-      .slice(0, 80);
+    const text = String(raw ?? "").trim().slice(0, 100);
     if (!text) return;
 
     const now = Date.now();
     if (now - (this.lastGuessAt.get(playerId) ?? 0) < GUESS_COOLDOWN_MS) return;
     this.lastGuessAt.set(playerId, now);
 
-    const titleHit = isMatch(text, titleTargets(item.movie));
-    const lineHit =
-      !titleHit &&
-      item.type === "line" &&
-      !!item.movie.line &&
-      isMatch(text, item.movie.line.answers);
-
-    if (!titleHit && !lineHit) {
-      this.emit({
-        kind: "wrong",
-        playerId,
-        name: player.name,
-        text: this.mode === "coop" ? text : undefined,
-      });
+    // outside a round it is just chat
+    const item = this.plan[this.idx];
+    if (this.phase !== "round" || !item) {
+      this.say({ playerId, name: player.name, text, kind: "chat" });
       return;
     }
 
+    const titleHit = isMatch(text, titleTargets(item.movie));
+    const lineHit =
+      !titleHit && item.type === "line" && !!item.movie.line && isMatch(text, item.movie.line.answers);
+
+    if (!titleHit && !lineHit) {
+      // everybody sees every wrong guess, like in skribbl
+      this.say({ playerId, name: player.name, text, kind: "guess" });
+      this.emit({ kind: "wrong", playerId, name: player.name });
+      if (isClose(text, titleTargets(item.movie))) {
+        this.io.to(playerId).emit("movie:event", { kind: "close" }); // only the guesser sees this
+      }
+      return;
+    }
+
+    // a correct guess is never shown as text
+    this.say({ playerId, name: player.name, text: "", kind: "correct", partial: lineHit });
     if (this.mode === "coop") return this.coopCorrect(player);
 
     const base = this.pointsNow();
-    this.endRound(
-      playerId,
-      lineHit ? Math.round(base * LINE_ANSWER_FACTOR) : base,
-      lineHit,
-    );
+    this.endRound(playerId, lineHit ? Math.round(base * LINE_ANSWER_FACTOR) : base, lineHit);
   }
 
   skip(playerId: string) {
@@ -417,6 +443,7 @@ export class MovieGame {
     if (!player || !item) return;
     this.skipped++;
     this.lastAnswer = item.movie.title;
+    this.say({ playerId: "", name: "", kind: "system", text: `${player.name} skipped. It was ${item.movie.title}.` });
     this.idx++;
     this.emit({ kind: "skip", name: player.name });
     if (this.idx >= this.plan.length) return this.finishCoop();
@@ -464,7 +491,7 @@ export class MovieGame {
       this.scores.set(winnerId, (this.scores.get(winnerId) ?? 0) + points);
 
     this.phase = "reveal";
-    this.reveal = { title: item.movie.title, winnerId, points };
+    this.reveal = { title: item.movie.title, winnerId, points, id: item.movie.id };
     this.startedAt = Date.now();
     this.endsAt = this.startedAt + REVEAL_MS;
     this.emitState();
@@ -475,6 +502,13 @@ export class MovieGame {
     } else {
       this.emit({ kind: "timeout" });
     }
+    const winnerName = this.room.players.find((p) => p.id === winnerId)?.name ?? "";
+    this.say({
+      playerId: "", name: "", kind: "system",
+      text: winnerId
+        ? `It was ${item.movie.title}. ${winnerName} gets +${points}.`
+        : `Time's up! The answer was ${item.movie.title}.`,
+    });
     this.later(REVEAL_MS, () => this.afterReveal());
   }
 
@@ -522,6 +556,7 @@ export class MovieGame {
     const item = this.plan[this.idx];
     this.solved++;
     this.lastAnswer = item.movie.title;
+    this.say({ playerId: "", name: "", kind: "system", text: `It was ${item.movie.title}.` });
     this.scores.set(player.id, (this.scores.get(player.id) ?? 0) + 1);
     this.idx++;
     this.emit({

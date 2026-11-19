@@ -2,10 +2,11 @@ import Matter from "matter-js";
 import type { Server } from "socket.io";
 import type { ClientToServer, ServerToClient, RoomState } from "../../../shared/events.js";
 import type {
-  TootCounts, TootEvent, TootGarage, TootHazard, TootInput, TootLevel, TootPick,
+  TootCounts, TootCustomMap, TootEvent, TootGarage, TootHazard, TootInput, TootLevel, TootPick,
   TootPlayer, TootSnapshot, TootState,
 } from "../../../shared/toot.js";
 import { buildLevel, LEVEL_COUNT } from "./tootLevels.js";
+import { KINDS, buildCustomLevel, validateCustom } from "./tootCustom.js";
 import { MAP_INFOS } from "./tootMaps.js";
 import { VEHICLES, vehicleById } from "./tootVehicles.js";
 
@@ -97,7 +98,8 @@ export class TootGame {
   private engine!: Matter.Engine;
   private raft!: Matter.Body;
   private level: TootLevel | null = null;
-  private garage: TootGarage = { map: "sewer", vehicle: "poop", avatars: {}, ready: {} };
+  private garage: TootGarage = { map: "sewer", vehicle: "poop", avatars: {}, ready: {}, custom: null };
+  private customSpec: TootCustomMap | null = null;
   private rw = 220;
   private rh = 28;
   private power = 1;
@@ -135,7 +137,9 @@ export class TootGame {
       vehicle: VEHICLES[0].id,
       avatars: Object.fromEntries(this.room.players.map((p, i) => [p.id, AVATARS[i % AVATARS.length]])),
       ready: Object.fromEntries(this.room.players.map((p) => [p.id, false])),
+      custom: null,
     };
+    this.customSpec = null;
     this.phase = "garage";
     this.loop = setInterval(this.tick, 16);
     this.emitState();
@@ -156,7 +160,11 @@ export class TootGame {
     if (typeof p.avatar === "string" && /^[a-z0-9-]{1,24}$/.test(p.avatar)) {
       this.garage.avatars[playerId] = p.avatar;
     }
-    if (typeof p.map === "string" && p.map !== this.garage.map && MAP_INFOS.some((m) => m.id === p.map)) {
+    if (
+      typeof p.map === "string" &&
+      p.map !== this.garage.map &&
+      (MAP_INFOS.some((m) => m.id === p.map) || (p.map === "custom" && !!this.customSpec))
+    ) {
       this.garage.map = p.map;
       changed = true;
     }
@@ -180,6 +188,22 @@ export class TootGame {
     }
   }
 
+  /** A player shares a custom map with the room. It is checked and cleaned here. */
+  setCustom(playerId: string, raw: unknown) {
+    if (this.phase !== "garage" || !this.slots.some((s) => s.id === playerId)) return;
+    const spec = validateCustom(raw);
+    if (!spec) return;
+    this.customSpec = spec;
+    this.garage.custom = spec;
+    this.garage.map = "custom";
+    for (const id of Object.keys(this.garage.ready)) this.garage.ready[id] = false;
+    this.emitState();
+  }
+
+  private count() {
+    return this.garage.map === "custom" ? 1 : LEVEL_COUNT;
+  }
+
   /* ----- public actions ----- */
 
   setInput(playerId: string, input: TootInput) {
@@ -192,7 +216,7 @@ export class TootGame {
 
   next() {
     if (this.phase !== "clear") return;
-    if (this.levelIndex + 1 < LEVEL_COUNT) {
+    if (this.levelIndex + 1 < this.count()) {
       this.loadLevel(this.levelIndex + 1);
       this.begin();
     } else {
@@ -261,7 +285,8 @@ export class TootGame {
       garage: this.garage,
       vehicle: vehicleById(this.garage.vehicle),
       levelIndex: this.levelIndex,
-      levelCount: LEVEL_COUNT,
+      levelCount: this.count(),
+      kinds: KINDS,
       level: this.phase === "garage" ? null : this.level,
       players: this.players(),
       startAt: this.startAt,
@@ -294,7 +319,10 @@ export class TootGame {
     this.power = v.power;
     this.control = v.control;
     this.levelIndex = index;
-    const level = buildLevel(this.garage.map, index);
+    const level =
+      this.garage.map === "custom" && this.customSpec
+        ? buildCustomLevel(this.customSpec)
+        : buildLevel(this.garage.map, index);
     this.level = level;
     this.engine = Engine.create({ gravity: { x: 0, y: 1, scale: TUNE.gravityScale } });
 

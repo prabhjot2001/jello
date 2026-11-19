@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { socket } from "@/socket";
-import { maybeMeme, playSfx } from "@/theme/sound";
+import { maybeMeme, playSfx } from "@/theme/sounds";
 import { serverNow, useServerTime } from "@/lib/clock";
 import type { KartAttack, KartPeer, KartState } from "@/types";
 import {

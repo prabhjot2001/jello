@@ -3,7 +3,7 @@ import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { socket } from "@/socket";
-// import { playSfx } from "@/theme/sound";
+// import { playSfx } from "@/theme/sounds";
 import { syncClock } from "@/lib/clock";
 import type { KartState } from "@/types";
 import { Garage } from "./Garage";
@@ -15,7 +15,7 @@ import {
   startGameMusic,
   stopGameMusic,
   type SfxName,
-} from "@/theme/sound";
+} from "@/theme/sounds";
 
 const card =
   "rounded-3xl border-2 border-border bg-card p-6 shadow-[4px_4px_0_0_var(--border)]";

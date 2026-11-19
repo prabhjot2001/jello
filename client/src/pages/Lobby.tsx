@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { playSfx } from "@/theme/sound";
+import { playSfx } from "@/theme/sounds";
 import { socket } from "@/socket";
 import { useRoom } from "@/store/useRoom";
 import { usePlayerStore } from "@/store/player";
@@ -13,6 +13,7 @@ import MovieGame from "@/games/movie/MovieGame";
 import { MovieSettingsPanel } from "@/games/movie/MovieSettingsPanel";
 import KartRace from "@/games/kart/KartRace";
 import TootRaft from "@/games/toot/TootRaft";
+import TankDuel from "@/games/tanks/TankDuel";
 
 const stickerCard =
   "rounded-3xl border-2 border-border bg-card p-5 shadow-[4px_4px_0_0_var(--border)]";
@@ -22,7 +23,7 @@ export default function Lobby() {
   const { name, setName } = usePlayerStore();
   const [draft, setDraft] = useState("");
 
-  // direct link se aaye aur naam nahi hai toh pehle naam pooch
+  // opened via a direct link without a name: ask for it first
   if (name.trim().length < 2) {
     return (
       <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-4 px-4">
@@ -73,7 +74,6 @@ function LobbyInner({ code }: { code: string }) {
   }
 
   const me = room.players.find((p) => p.id === myId);
-  // const other = room.players.find((p) => p.id !== myId);
   const game = GAMES.find((g) => g.id === room.gameId);
   const canStart =
     room.players.length >= room.limits.min &&
@@ -81,12 +81,13 @@ function LobbyInner({ code }: { code: string }) {
     room.players.every((p) => p.ready) &&
     !!room.gameId;
     
-  // game start ho gaya (abhi placeholder)
+  // the game has started
   if (room.phase === "playing") {
     if (room.gameId === "movie-guess")
       return <MovieGame room={room} myId={myId} />;
     if (room.gameId === "kart-race") return <KartRace myId={myId} />;
     if (room.gameId === "toot-raft") return <TootRaft myId={myId} />;
+    if (room.gameId === "tank-duel") return <TankDuel myId={myId} />;
     return (
       <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-4 px-4 text-center">
         <div className="text-6xl">{game?.emoji}</div>

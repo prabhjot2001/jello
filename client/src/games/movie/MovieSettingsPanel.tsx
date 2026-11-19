@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { socket } from "@/socket";
-import { playSfx } from "@/theme/sound";
+import { playSfx } from "@/theme/sounds";
+import { loadSeen } from "@/lib/movieHistory";
 import type { MovieSettings, PuzzleType, RoomState } from "@/types";
 import { useEffect, useState } from "react";
 
@@ -47,6 +48,9 @@ function Seg<T extends string | number | boolean>({
 }
 
 export function MovieSettingsPanel({ room }: { room: RoomState }) {
+  useEffect(() => {
+    socket.emit("movie:history", loadSeen());
+  }, []);
   const s = room.settings;
   const coop = room.mode === "coop";
 

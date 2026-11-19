@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { socket } from "@/socket";
 import { syncClock } from "@/lib/clock";
 import { recordStars, starsFor } from "@/lib/tootProgress";
-import { playSfx, startGameMusic, stopGameMusic } from "@/theme/sound";
+import { playSfx, startGameMusic, stopGameMusic } from "@/theme/sounds";
 import type { TootCounts, TootLevel, TootPlayer, TootState } from "@/types";
 import { TootCanvas } from "./TootCanvas";
 import { TootGarage } from "./TootGarage";
@@ -33,10 +33,11 @@ export default function TootRaft({ myId }: { myId: string }) {
     return () => clearInterval(id);
   }, []);
 
+  const musicKey = !state || state.phase === "garage" || !state.level ? "toot:garage" : `toot:${state.level.themeId}`;
   useEffect(() => {
-    startGameMusic("toot");
-    return () => stopGameMusic();
-  }, []);
+    startGameMusic(musicKey);
+  }, [musicKey]);
+  useEffect(() => () => stopGameMusic(), []);
 
   if (!state) {
     return <div className="flex min-h-[60vh] items-center justify-center font-display text-xl">Loading… 🐱</div>;
@@ -93,7 +94,7 @@ function ClearOverlay({ state, level, myId }: { state: TootState; level: TootLev
   const stars = starsFor(state.stats.deaths);
 
   useEffect(() => {
-    recordStars(level.mapId, state.levelIndex, stars);
+    if (level.mapId !== "custom") recordStars(level.mapId, state.levelIndex, stars);
     playSfx("win");
     confetti({ particleCount: 140, spread: 80, origin: { y: 0.6 } });
     // run once when the level is cleared
