@@ -7,7 +7,8 @@ export type GameId =
   | "bubble-battle"
   | "kart-race"
   | "toot-raft"
-  | "tank-duel";
+  | "tank-duel"
+  | "cat-militia";
 
 export interface GameInfo {
   id: GameId;
@@ -46,6 +47,8 @@ export const GAMES: GameInfo[] = [
     tagline:
       "Steer one raft together with gas power. Aim, time and balance your toots to reach the finish.",
   },
+  { id: "cat-militia", title: "Cat Militia", emoji: "🔫", kind: "Action", status: "live",
+    tagline: "Jetpack deathmatch. Aim, shoot, grab crates and out-fly your friends." },
   { id: "tank-duel", title: "Cat Tanks", emoji: "🎯", kind: "Action", status: "live",
     tagline: "A turn-based artillery duel. Pick weapons, aim, fire and flatten your rival's tank." },
   // {

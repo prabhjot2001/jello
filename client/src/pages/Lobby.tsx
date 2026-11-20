@@ -14,6 +14,7 @@ import { MovieSettingsPanel } from "@/games/movie/MovieSettingsPanel";
 import KartRace from "@/games/kart/KartRace";
 import TootRaft from "@/games/toot/TootRaft";
 import TankDuel from "@/games/tanks/TankDuel";
+import CatMilitia from "@/games/militia/CatMilitia";
 
 const stickerCard =
   "rounded-3xl border-2 border-border bg-card p-5 shadow-[4px_4px_0_0_var(--border)]";
@@ -88,6 +89,7 @@ function LobbyInner({ code }: { code: string }) {
     if (room.gameId === "kart-race") return <KartRace myId={myId} />;
     if (room.gameId === "toot-raft") return <TootRaft myId={myId} />;
     if (room.gameId === "tank-duel") return <TankDuel myId={myId} />;
+    if (room.gameId === "cat-militia") return <CatMilitia myId={myId} />;
     return (
       <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-4 px-4 text-center">
         <div className="text-6xl">{game?.emoji}</div>

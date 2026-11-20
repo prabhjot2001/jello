@@ -13,6 +13,7 @@ import type {
   KartState,
 } from "./kart.js";
 import type { TootCustomMap, TootEvent, TootInput, TootPick, TootSnapshot, TootState } from "./toot.js";
+import type { MilitiaFire, MilitiaHit, MilitiaPeer, MilitiaSettings, MilitiaSnap, MilitiaState } from "./militia.js";
 import type { TankAim, TankPick, TankSettings, TankShot, TanksState, TankTerrain } from "./tanks.js";
 
 export interface Player {
@@ -57,6 +58,15 @@ export interface ClientToServer {
   "toot:right": () => void;
   "toot:reset": () => void;
   "toot:custom": (m: TootCustomMap) => void;
+  "militia:request-state": () => void;
+  "militia:settings": (patch: Partial<MilitiaSettings>) => void;
+  "militia:color": (color: string) => void;
+  "militia:ready": (ready: boolean) => void;
+  "militia:update": (snap: MilitiaSnap) => void;
+  "militia:fire": (f: Omit<MilitiaFire, "id">) => void;
+  "militia:hit": (h: { victim: string; dmg: number; w: string }) => void;
+  "militia:pickup": (crateId: number) => void;
+  "militia:again": () => void;
   "movie:history": (ids: string[]) => void;
   "tanks:request-state": () => void;
   "tanks:pick": (p: TankPick) => void;
@@ -89,6 +99,11 @@ export interface ClientToServer {
 }
 
 export interface ServerToClient {
+  "militia:state": (s: MilitiaState) => void;
+  "militia:peer": (p: MilitiaPeer) => void;
+  "militia:fire": (f: MilitiaFire) => void;
+  "militia:hit": (h: MilitiaHit) => void;
+
   "movie:chat": (m: MovieChat) => void;
   "tanks:state": (s: TanksState) => void;
   "tanks:terrain": (t: TankTerrain) => void;

@@ -4,6 +4,7 @@ export const GAME_LIMITS: Record<string, { min: number; max: number }> = {
   "kart-race": { min: 2, max: 2 },
   "toot-raft": { min: 1, max: 4 },
   "tank-duel": { min: 2, max: 2 },
+  "cat-militia": { min: 2, max: 4 },
 };
 
 export const limitsFor = (gameId: string | null) => GAME_LIMITS[gameId ?? ""] ?? { min: 2, max: 2 };

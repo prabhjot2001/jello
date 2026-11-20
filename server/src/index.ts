@@ -23,6 +23,7 @@ import { applySettings } from "./games/movieSettings.js";
 import { getKartGame, startKartGame, stopKartGame } from "./games/kartRace.js";
 import { getTootGame, startTootGame, stopTootGame } from "./games/tootRaft.js";
 import { getTankGame, startTankGame, stopTankGame } from "./games/tankDuel.js";
+import { getMilitiaGame, startMilitiaGame, stopMilitiaGame } from "./games/militia.js";
 import { limitsFor } from "./games/limits.js";
 
 const app = express();
@@ -62,6 +63,7 @@ io.on("connection", (socket) => {
       stopKartGame(room.code);
       stopTootGame(room.code);
       stopTankGame(room.code);
+    stopMilitiaGame(room.code);
       socket.leave(room.code);
       broadcast(room);
     }
@@ -137,6 +139,7 @@ io.on("connection", (socket) => {
     if (room.gameId === "kart-race") startKartGame(io, room);
     if (room.gameId === "toot-raft") startTootGame(io, room);
     if (room.gameId === "tank-duel") startTankGame(io, room);
+    if (room.gameId === "cat-militia") startMilitiaGame(io, room);
   });
 
   socket.on("room:back", () => {
@@ -146,6 +149,7 @@ io.on("connection", (socket) => {
     stopKartGame(room.code);
     stopTootGame(room.code);
     stopTankGame(room.code);
+    stopMilitiaGame(room.code);
     room.phase = "lobby";
     room.players.forEach((p) => (p.ready = false));
     broadcast(room);
@@ -224,6 +228,24 @@ io.on("connection", (socket) => {
   socket.on("toot:right", () => toot()?.right(socket.id));
   socket.on("toot:reset", () => toot()?.voteReset(socket.id));
   socket.on("toot:custom", (m) => toot()?.setCustom(socket.id, m));
+
+  /* ----- cat militia ----- */
+  const militia = () => {
+    const room = getRoom(socket.id);
+    return room ? getMilitiaGame(room.code) : undefined;
+  };
+  socket.on("militia:request-state", () => {
+    const g = militia();
+    if (g) socket.emit("militia:state", g.publicState());
+  });
+  socket.on("militia:settings", (p) => militia()?.setSettings(socket.id, p ?? {}));
+  socket.on("militia:color", (c) => militia()?.setColor(socket.id, String(c)));
+  socket.on("militia:ready", (r) => militia()?.setReady(socket.id, !!r));
+  socket.on("militia:update", (snap) => militia()?.relay(socket.id, snap));
+  socket.on("militia:fire", (f) => militia()?.fire(socket.id, f));
+  socket.on("militia:hit", (h) => militia()?.hit(socket.id, h));
+  socket.on("militia:pickup", (id) => militia()?.pickup(socket.id, Number(id)));
+  socket.on("militia:again", () => militia()?.again());
 
   /* ----- tank duel ----- */
 
