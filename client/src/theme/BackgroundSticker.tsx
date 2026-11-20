@@ -19,7 +19,7 @@ export function BackgroundStickers() {
   );
 
   return (
-    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+    <div data-bg-stickers className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
       {items.map((s, i) => (
         <img
           key={i}

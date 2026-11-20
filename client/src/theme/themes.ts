@@ -1,7 +1,18 @@
 export type ThemeId =
-  | "calico" | "siamese" | "tuxedo" | "midnight"
-  | "strawberry-milk" | "blueberry-kiss" | "peachy-puff" | "minty-mochi"
-  | "cloudberry" | "honey-bunny" | "sakura-sugar" | "grape-cupcake";
+  | "ios-light"
+  | "ios-dark"
+  | "calico"
+  | "siamese"
+  | "tuxedo"
+  | "midnight"
+  | "strawberry-milk"
+  | "blueberry-kiss"
+  | "peachy-puff"
+  | "minty-mochi"
+  | "cloudberry"
+  | "honey-bunny"
+  | "sakura-sugar"
+  | "grape-cupcake";
 
 export interface Theme {
   id: ThemeId;
@@ -12,6 +23,20 @@ export interface Theme {
 }
 
 export const THEMES: Theme[] = [
+  {
+    id: "ios-light",
+    name: "iOS Light",
+    emoji: "☀️",
+    stickers: [],
+    defaultTrack: "chill",
+  },
+  {
+    id: "ios-dark",
+    name: "iOS Dark",
+    emoji: "🌑",
+    stickers: [],
+    defaultTrack: "chill",
+  },
   {
     id: "calico",
     name: "Calico Cafe",

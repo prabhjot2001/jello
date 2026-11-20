@@ -18,7 +18,7 @@ interface ThemeState {
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set) => ({
-      themeId: "calico",
+      themeId: "ios-light",
       trackId: "cozy",
       musicOn: false,
       sfxOn: true,

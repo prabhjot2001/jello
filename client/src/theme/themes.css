@@ -185,3 +185,120 @@ body {
   width: min(100%, calc((100dvh - 420px) * 1.6));
   min-width: min(100%, 320px);
 }
+
+/* =====================================================================
+   iOS themes: Apple system colours, SF font, flat 1px separators, soft shadows
+   ===================================================================== */
+:root[data-theme="ios-light"] {
+  color-scheme: light;
+  --background:#F2F2F7; --foreground:#000000;
+  --card:#FFFFFF; --card-foreground:#000000;
+  --popover:#FFFFFF; --popover-foreground:#000000;
+  --primary:#007AFF; --primary-foreground:#FFFFFF;
+  --secondary:#E9E9EE; --secondary-foreground:#000000;
+  --muted:#EFEFF4; --muted-foreground:#8A8A8E;
+  --accent:#E3F0FF; --accent-foreground:#007AFF;
+  --destructive:#FF3B30;
+  --border:#D8D8DD; --input:#E9E9EE; --ring:#007AFF;
+  --ios-shadow: 0 1px 2px rgba(0,0,0,.05), 0 8px 24px rgba(0,0,0,.08);
+  --ios-shadow-sm: 0 1px 2px rgba(0,0,0,.06);
+}
+:root[data-theme="ios-dark"] {
+  color-scheme: dark;
+  --background:#000000; --foreground:#FFFFFF;
+  --card:#1C1C1E; --card-foreground:#FFFFFF;
+  --popover:#2C2C2E; --popover-foreground:#FFFFFF;
+  --primary:#0A84FF; --primary-foreground:#FFFFFF;
+  --secondary:#2C2C2E; --secondary-foreground:#FFFFFF;
+  --muted:#1C1C1E; --muted-foreground:#8E8E93;
+  --accent:#0A2A4D; --accent-foreground:#0A84FF;
+  --destructive:#FF453A;
+  --border:#38383A; --input:#2C2C2E; --ring:#0A84FF;
+  --ios-shadow: 0 0 0 .5px rgba(255,255,255,.06), 0 10px 30px rgba(0,0,0,.6);
+  --ios-shadow-sm: 0 0 0 .5px rgba(255,255,255,.06);
+}
+
+:root[data-theme^="ios"] body,
+:root[data-theme^="ios"] h1,
+:root[data-theme^="ios"] h2,
+:root[data-theme^="ios"] h3,
+:root[data-theme^="ios"] .font-display {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "Segoe UI", Roboto, sans-serif;
+  letter-spacing: -0.012em;
+}
+:root[data-theme^="ios"] h1, :root[data-theme^="ios"] h2, :root[data-theme^="ios"] h3 { font-weight: 700; }
+:root[data-theme^="ios"] .font-display { font-weight: 600; }
+:root[data-theme^="ios"] body { -webkit-font-smoothing: antialiased; }
+
+/* calm background: no meme stickers */
+:root[data-theme^="ios"] [data-bg-stickers] { display: none; }
+
+/* hard "neo" borders become hairlines, hard shadows become soft ones */
+:root[data-theme^="ios"] .border-2 { border-width: 1px; }
+:root[data-theme^="ios"] [class*="shadow-[2px_2px"],
+:root[data-theme^="ios"] [class*="shadow-[3px_3px"],
+:root[data-theme^="ios"] [class*="shadow-[4px_4px"],
+:root[data-theme^="ios"] [class*="shadow-[5px_5px"] { box-shadow: var(--ios-shadow) !important; }
+:root[data-theme^="ios"] .rounded-3xl { border-radius: 22px; }
+:root[data-theme^="ios"] .rounded-2xl { border-radius: 16px; }
+
+/* translucent nav bar like UINavigationBar */
+:root[data-theme^="ios"] nav.sticky {
+  background: color-mix(in srgb, var(--background) 72%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(22px);
+  backdrop-filter: saturate(180%) blur(22px);
+  border-bottom-width: .5px;
+}
+
+/* buttons: filled blue primary, grey/tinted secondary, press = fade */
+:root[data-theme^="ios"] [data-slot="button"] {
+  border-radius: 12px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  min-height: 34px;
+  box-shadow: none;
+  transition: opacity .15s ease, transform .12s ease, background-color .15s ease;
+}
+:root[data-theme^="ios"] [data-slot="button"]:hover { filter: none; }
+:root[data-theme^="ios"] [data-slot="button"]:active { opacity: .6; transform: scale(.97); }
+:root[data-theme^="ios"] [data-slot="button"][class*="bg-primary"] { background: var(--primary); color: var(--primary-foreground); }
+:root[data-theme^="ios"] [data-slot="button"][class*="border-border"],
+:root[data-theme^="ios"] [data-slot="button"][class*="bg-secondary"] {
+  background: var(--secondary);
+  border-color: transparent;
+  color: var(--primary);
+}
+:root[data-theme^="ios"] [data-slot="button"][class*="hover:bg-muted"]:not([class*="border-border"]) { color: var(--primary); }
+:root[data-theme^="ios"] [data-slot="button"][class*="bg-destructive/10"] { background: color-mix(in srgb, var(--destructive) 14%, transparent); color: var(--destructive); }
+
+/* plain <button> pills used inside games stay round and tidy */
+:root[data-theme^="ios"] button:not([data-slot]) { transition: opacity .15s ease, transform .12s ease; }
+:root[data-theme^="ios"] button:not([data-slot]):active { opacity: .65; transform: scale(.97); }
+
+/* inputs & selects like iOS text fields / pickers */
+:root[data-theme^="ios"] [data-slot="input"],
+:root[data-theme^="ios"] [data-slot="select-trigger"] {
+  background: var(--secondary);
+  border-color: transparent;
+  border-radius: 12px;
+  min-height: 36px;
+  box-shadow: none;
+}
+:root[data-theme^="ios"] [data-slot="input"]:focus-visible,
+:root[data-theme^="ios"] [data-slot="select-trigger"]:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 30%, transparent); }
+:root[data-theme^="ios"] [data-slot="select-content"] {
+  border-radius: 14px;
+  border: .5px solid var(--border);
+  box-shadow: var(--ios-shadow);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+}
+:root[data-theme^="ios"] [data-slot="select-item"] { border-radius: 8px; }
+
+/* cards: white grouped surfaces with a hairline */
+:root[data-theme^="ios"] [data-slot="card"] {
+  border-radius: 20px;
+  box-shadow: var(--ios-shadow-sm);
+  border: .5px solid var(--border);
+}
+:root[data-theme^="ios"] ::selection { background: color-mix(in srgb, var(--primary) 30%, transparent); }

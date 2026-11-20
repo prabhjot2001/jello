@@ -39,7 +39,7 @@ const STEPS = [
   {
     emoji: "🐌",
     title: "Play, Win & Have Fun!",
-    text: "Blehhhhhhh",
+    text: "Blehhhhhhh 😛😛",
   },
 ];
 
@@ -75,11 +75,11 @@ export default function Landing() {
           🐾 Meowieee 🐾
         </span>
         <h1 className="font-display text-5xl font-bold leading-tight sm:text-7xl">
-          Games for
+          Jeelloo
           <br />
           <span className="flex gap-4">
             <span className="inline-block -rotate-2 rounded-3xl border-2 border-border bg-primary px-4 shadow-[4px_4px_0_0_var(--border)]">
-              Meows
+              Games 💝
             </span>{" "}
             <Sticker src={"sticker_030.png"} fallback={"😸"} size={76} />
           </span>
