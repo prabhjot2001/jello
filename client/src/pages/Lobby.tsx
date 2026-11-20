@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import KartRace from "@/games/kart/KartRace";
 import TootRaft from "@/games/toot/TootRaft";
 import TankDuel from "@/games/tanks/TankDuel";
 import CatMilitia from "@/games/militia/CatMilitia";
+import { GameShell } from "@/components/GameShell";
 
 const stickerCard =
   "rounded-3xl border-2 border-border bg-card p-5 shadow-[4px_4px_0_0_var(--border)]";
@@ -84,12 +86,13 @@ function LobbyInner({ code }: { code: string }) {
     
   // the game has started
   if (room.phase === "playing") {
+    const inGame = (el: ReactNode) => <GameShell>{el}</GameShell>;
     if (room.gameId === "movie-guess")
-      return <MovieGame room={room} myId={myId} />;
-    if (room.gameId === "kart-race") return <KartRace myId={myId} />;
-    if (room.gameId === "toot-raft") return <TootRaft myId={myId} />;
-    if (room.gameId === "tank-duel") return <TankDuel myId={myId} />;
-    if (room.gameId === "cat-militia") return <CatMilitia myId={myId} />;
+      return inGame(<MovieGame room={room} myId={myId} />);
+    if (room.gameId === "kart-race") return inGame(<KartRace myId={myId} />);
+    if (room.gameId === "toot-raft") return inGame(<TootRaft myId={myId} />);
+    if (room.gameId === "tank-duel") return inGame(<TankDuel myId={myId} />);
+    if (room.gameId === "cat-militia") return inGame(<CatMilitia myId={myId} />);
     return (
       <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-4 px-4 text-center">
         <div className="text-6xl">{game?.emoji}</div>

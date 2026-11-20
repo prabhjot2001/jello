@@ -227,6 +227,8 @@ function Arena({ state, myId }: { state: MilitiaState; myId: string }) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     resize();
+    const ro = new ResizeObserver(resize);
+    ro.observe(canvas);
     window.addEventListener("resize", resize);
 
     /* ----- socket ----- */
@@ -445,6 +447,7 @@ function Arena({ state, myId }: { state: MilitiaState; myId: string }) {
 
     return () => {
       cancelAnimationFrame(raf);
+      ro.disconnect();
       window.removeEventListener("resize", resize);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
@@ -463,7 +466,7 @@ function Arena({ state, myId }: { state: MilitiaState; myId: string }) {
   }, [state.startAt, myId]);
 
   return (
-    <div className="relative mx-auto h-[calc(100dvh-5rem)] w-full max-w-[1400px] select-none overflow-hidden rounded-3xl border-2 border-border bg-black">
+    <div className="relative h-full w-full select-none overflow-hidden bg-black">
       <canvas ref={canvasRef} className="h-full w-full touch-none" />
       {rotateHint && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/70 p-8 text-center font-display text-xl text-white">

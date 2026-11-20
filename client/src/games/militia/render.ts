@@ -260,9 +260,9 @@ export function drawHud(ctx: CanvasRenderingContext2D, w: MilitiaWorld, cw: numb
   hud.feed.filter((f) => now - f.at < 5000).slice(-5).forEach((f, i) => {
     ctx.fillStyle = "rgba(30,20,50,.6)";
     const tw = ctx.measureText(f.text).width + 14;
-    ctx.fillRect(cw - 10 - tw, 14 + i * 22, tw, 19);
+    ctx.fillRect(cw - 10 - tw, 54 + i * 22, tw, 19);
     ctx.fillStyle = "#fff";
-    ctx.fillText(f.text, cw - 17, 28 + i * 22);
+    ctx.fillText(f.text, cw - 17, 68 + i * 22);
   });
 
   // bars (bottom centre)
