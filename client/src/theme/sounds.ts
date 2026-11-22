@@ -43,7 +43,7 @@ export const SFX = {
   tFire:    ["tank-fire-1.mp3", "tank-fire-2.mp3"],
   // cat militia
   mShot:    ["mil-pistol-1.mp3"],
-  mSmg:     ["mil-smg-1.mp3"],
+  mSmg:     ["mil-smg-1.wav"],
   mShotgun: ["mil-shotgun-1.mp3"],
   mSniper:  ["mil-sniper-1.mp3"],
   mRocket:  ["mil-rocket-1.mp3"],
